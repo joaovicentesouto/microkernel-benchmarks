@@ -2,3 +2,6 @@
 	path = utils
 	url = https://github.com/nanvix/utils.git
 	branch = unstable
+[submodule "contrib/libnanvix"]
+	path = contrib/libnanvix
+	url = https://github.com/nanvix/libnanvix.git
