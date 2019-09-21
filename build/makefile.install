@@ -37,8 +37,8 @@ export ARTIFACTS := $(shell find $(INCDIR) -name *.h -type f)
 
 #===============================================================================
 
-# Install
-install: | all-target copy-artifacts
+# Install Everything
+install: | all-target install-headers
 	@mkdir -p $(PREFIX)/lib
 	@cp -f $(LIBDIR)/libhal*.a $(PREFIX)/lib
 	@echo [CP] $(LIBDIR)/libhal*.a
@@ -46,20 +46,36 @@ install: | all-target copy-artifacts
 	@echo [CP] $(LIBDIR)/libkernel*.a
 	@cp -f $(LIBDIR)/libnanvix*.a $(PREFIX)/lib
 	@echo [CP] $(LIBDIR)/libnanvix*.a
+	@cp -f $(LIBDIR)/libc*.a $(PREFIX)/lib
+	@echo [CP] $(LIBDIR)/libc*.a
 	@echo "==============================================================================="
-	@echo "Nanvix Microkernel Successfully Installed into $(PREFIX)"
+	@echo "Nanvix uLibc Successfully Installed"
 	@echo "==============================================================================="
 
-# Uninstall
-uninstall: | distclean delete-artifacts
+# Install Headers
+install-headers: copy-artifacts
+	@echo "==============================================================================="
+	@echo "Nanvix uLibc Headers Successfully Installed"
+	@echo "==============================================================================="
+
+# Uninstall Everything
+uninstall: | distclean uninstall-headers
 	@rm -f $(PREFIX)/lib/libhal*.a
 	@echo [RM] $(PREFIX)/lib/libhal*.a
 	@rm -f $(PREFIX)/lib/libkernel*.a
 	@echo [RM] $(PREFIX)/lib/libkernel*.a
 	@rm -f $(PREFIX)/lib/libnanvix*.a
 	@echo [RM] $(PREFIX)/lib/libnanvix*.a
+	@rm -f $(PREFIX)/lib/libc*.a
+	@echo [RM] $(PREFIX)/lib/libc*.a
 	@echo "==============================================================================="
-	@echo "Nanvix Microkernel Successfully Uninstalled from $(PREFIX)"
+	@echo "Nanvix uLibc Successfully Uninstalled"
+	@echo "==============================================================================="
+
+# Uninstall Headers
+uninstall-headers: delete-artifacts
+	@echo "==============================================================================="
+	@echo "Nanvix uLibc Headers Successfully Uninstalled"
 	@echo "==============================================================================="
 
 # Copies All Artifacts
