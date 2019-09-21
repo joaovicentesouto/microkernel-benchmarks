@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#include <ulibc/stdio.h>
-#include <nanvix.h>
+#include <nanvix/sys/thread.h>
+#include <stdint.h>
 #include <kbench.h>
 
 /*============================================================================*
@@ -60,7 +60,7 @@ static inline void benchmark_dump_stats(int it, uint64_t *stats)
 
 	spinlock_lock(&lock);
 
-		printf("%s %d %d %d %d %d %d %d %d\n",
+		kprintf("%s %d %d %d %d %d %d %d %d\n",
 			"[benchmarks][perf]",
 			it,
 			UINT32(stats[0]),
@@ -92,7 +92,7 @@ int main(int argc, const char *argv[])
 	((void) argc);
 	((void) argv);
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 	/*
 	 * TODO: Query performance monitoring capabilities.
@@ -114,7 +114,7 @@ int main(int argc, const char *argv[])
 			benchmark_dump_stats(i - SKIP, stats);
 	}
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 	return (0);
 }

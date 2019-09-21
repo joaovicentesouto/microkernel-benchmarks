@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#include <ulibc/stdio.h>
-#include <nanvix.h>
+#include <nanvix/sys/thread.h>
+#include <stdint.h>
 #include <kbench.h>
 
 /**
@@ -81,7 +81,7 @@ static inline void benchmark_dump_stats(int it, size_t objsize, uint64_t *stats)
 
 	spinlock_lock(&lock);
 
-		printf("%s %d %d %d %d %d %d %d %d %d %d\n",
+		kprintf("%s %d %d %d %d %d %d %d %d %d %d\n",
 			"[benchmarks][stream]",
 			it,
 			NTHREADS,
@@ -201,7 +201,7 @@ int main(int argc, const char *argv[])
 	((void) argc);
 	((void) argv);
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 #ifndef NDEBUG
 
@@ -217,7 +217,7 @@ int main(int argc, const char *argv[])
 
 #endif
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 	return (0);
 }

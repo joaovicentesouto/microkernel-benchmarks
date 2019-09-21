@@ -28,6 +28,7 @@
 
 # C Source Files
 SRC += $(wildcard *.c)
+SRC += $(wildcard ../crt0.c)
 
 # Object Files
 OBJ += $(SRC:.c=.$(OBJ_SUFFIX).o)

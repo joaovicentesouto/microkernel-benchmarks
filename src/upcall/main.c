@@ -22,8 +22,8 @@
  * SOFTWARE.
  */
 
-#include <ulibc/stdio.h>
-#include <nanvix.h>
+#include <nanvix/sys/thread.h>
+#include <nanvix/sys/signal.h>
 #include <stdint.h>
 #include <kbench.h>
 
@@ -66,7 +66,7 @@ static inline void benchmark_dump_stats(int it, uint64_t *stats)
 
 	spinlock_lock(&lock);
 
-		printf("%s %d %d %d %d %d %d %d %d\n",
+		kprintf("%s %d %d %d %d %d %d %d %d\n",
 			"[benchmarks][upcall]",
 			it,
 			UINT32(stats[0]),
@@ -133,12 +133,12 @@ static void *task(void *arg)
 void benchmark_upcall(void)
 {
 	kthread_t tid;
-	struct sigaction sigact;
+	struct ksigaction sigact;
 	uint64_t upcall_stats[BENCHMARK_PERF_EVENTS];
 
 	/* Sets the page fault handler. */
 	sigact.handler = handler;
-	KASSERT(ksigclt(SIGPGFAULT, &sigact) == 0);
+	KASSERT(ksigctl(SIGPGFAULT, &sigact) == 0);
 
 	/* Executes benchmarks. */
 	for (int i = 0; i < (NITERATIONS + SKIP); i++)
@@ -161,7 +161,7 @@ void benchmark_upcall(void)
 
 	/* Unsets the page fault handler. */
 	sigact.handler = NULL;
-	KASSERT(ksigclt(SIGPGFAULT, &sigact) == 0);
+	KASSERT(ksigctl(SIGPGFAULT, &sigact) == 0);
 }
 
 /*============================================================================*
@@ -179,11 +179,11 @@ int main(int argc, const char *argv[])
 	((void) argc);
 	((void) argv);
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 	benchmark_upcall();
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 	return (0);
 }

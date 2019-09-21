@@ -22,8 +22,7 @@
  * SOFTWARE.
  */
 
-#include <ulibc/stdio.h>
-#include <nanvix.h>
+#include <nanvix/sys/thread.h>
 #include <stdint.h>
 #include <kbench.h>
 
@@ -77,7 +76,7 @@ static inline void benchmark_dump_stats(int it, uint64_t *fork_stats, uint64_t *
 
 	spinlock_lock(&lock);
 
-		printf("%s %d %s %d %d %d %d %d %d %d %d\n",
+		kprintf("%s %d %s %d %d %d %d %d %d %d %d\n",
 			"[benchmarks][fork-join]",
 			it,
 			"f",
@@ -91,7 +90,7 @@ static inline void benchmark_dump_stats(int it, uint64_t *fork_stats, uint64_t *
 			UINT32(fork_stats[6])
 		);
 
-		printf("%s %d %s %d %d %d %d %d %d %d %d\n",
+		kprintf("%s %d %s %d %d %d %d %d %d %d %d\n",
 			"[benchmarks][fork-join]",
 			it,
 			"j",
@@ -181,7 +180,7 @@ int main(int argc, const char *argv[])
 	((void) argc);
 	((void) argv);
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 #ifndef NDEBUG
 
@@ -194,7 +193,7 @@ int main(int argc, const char *argv[])
 
 #endif
 
-	printf(HLINE);
+	kprintf(HLINE);
 
 	return (0);
 }
