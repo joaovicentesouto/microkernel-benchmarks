@@ -25,7 +25,8 @@
 #ifndef _KBENCH_H_
 #define _KBENCH_H_
 
-	#include <nanvix.h>
+	#include <nanvix/runtime/stdikc.h>
+	#include <nanvix/sys/dev.h>
 	#include <stdint.h>
 
 	/**
