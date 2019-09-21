@@ -32,6 +32,9 @@ export VERBOSE ?= no
 # Release Version?
 export RELEASE ?= false
 
+# Default Benchmark Kernel
+export KERNEL ?= fork-join
+
 #===============================================================================
 # Directories
 #===============================================================================
@@ -43,12 +46,11 @@ export BUILDDIR   := $(ROOTDIR)/build
 export CONTRIBDIR := $(ROOTDIR)/contrib
 export LINKERDIR  := $(BUILDDIR)/$(TARGET)/linker
 export MAKEDIR    := $(BUILDDIR)/$(TARGET)/make
-export DOCDIR     := $(ROOTDIR)/doc
 export IMGDIR     := $(ROOTDIR)/img
 export INCDIR     := $(ROOTDIR)/include
 export LIBDIR     := $(ROOTDIR)/lib
 export SRCDIR     := $(ROOTDIR)/src
-export UTILSDIR   := $(ROOTDIR)/utils
+export TOOLSDIR   := $(ROOTDIR)/utils
 
 #===============================================================================
 # Libraries and Binaries
@@ -58,7 +60,9 @@ export UTILSDIR   := $(ROOTDIR)/utils
 export LIBHAL    = $(LIBDIR)/libhal-$(TARGET).a
 export LIBKERNEL = $(LIBDIR)/libkernel-$(TARGET).a
 export LIBNANVIX = $(LIBDIR)/libnanvix-$(TARGET).a
-export LIBC      = $(LIBDIR)/libc-$(TARGET).a
+
+# Binaries
+export BINARIES = $(KERNEL)
 
 #===============================================================================
 # Target-Specific Make Rules
@@ -89,33 +93,36 @@ export ARFLAGS = rc
 
 #===============================================================================
 
+# Image Binary
+export IMAGE := $(IMGDIR)/$(KERNEL).img
+
 # Builds Everything
-all: images
+all: image
 
 # Make Directories
 make-dirs:
-	@mkdir -p $(INCDIR)
-	@mkdir -p $(IMGDIR)
-	@mkdir -p $(BINDIR)
-	@mkdir -p $(LIBDIR)
+	@mkdir -p $(INCDIR) $(IMGDIR) $(LIBDIR) $(BINDIR)
 
-# Build Binary Images
-images: | make-dirs all-target
-	@$(MAKE) -C $(SRCDIR) images
+image: | make-dirs all-target
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMAGE) $(BINDIR) "$(BINARIES)"
 
 # Cleans builds.
 clean: clean-target
 
 # Cleans everything.
-distclean: | clean-target
-	 @rm -f $(BINDIR)/*
-	 @find $(SRCDIR) -name "*.o" -exec rm -rf {} \;
+distclean: distclean-target
 
 #===============================================================================
 # Contrib Install and Uninstall Rules
 #===============================================================================
 
 include $(BUILDDIR)/makefile.contrib
+
+#===============================================================================
+# Install and Uninstall Rules
+#===============================================================================
+
+include $(BUILDDIR)/makefile.install
 
 #===============================================================================
 # Debug and Run Rules
