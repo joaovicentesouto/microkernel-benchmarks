@@ -43,30 +43,13 @@ int main(int argc, const char *argv[])
 
 	kprintf(HLINE);
 
-		kprintf("SYNC SETUP");
-		__stdsync_setup();
+		kprintf("This it the ARGC: %d", argc);
 
-
-			if (cluster_get_num() != PROCESSOR_CLUSTERNUM_MASTER)
-			{
-				kprintf("    %d DUMMY", cluster_get_num());
-				int dummy = 1000;
-				while (dummy--);
-			}
-
-			kprintf("SYNC FENCE");
-			stdsync_fence();
-
-		kprintf("SYNC CLEANUP");
-		__stdsync_cleanup();
-
-		// kprintf("This it the ARGC: %d", argc);
-
-		// if (argv != NULL)
-		// {
-		// 	for (int i = 0; i < argc; ++i)
-		// 		kprintf("Arg %d => %s", i, argv[i]);
-		// }
+		if (argv != NULL)
+		{
+			for (int i = 0; i < argc; ++i)
+				kprintf("Arg %d => %s", i, argv[i]);
+		}
 
 	kprintf(HLINE);
 
