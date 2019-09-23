@@ -35,13 +35,13 @@ export LIBS += -Wl,--no-whole-archive $(THEIR_LIBS)
 #===============================================================================
 
 # Builds Binary Files
-all: all-fork-join all-gf all-mm all-perf all-stream all-upcall all-args
+all: all-args all-portal-pingpong # all-fork-join all-gf all-mm all-perf all-stream all-upcall 
 
 # Cleans Object Files
-clean: clean-fork-join clean-gf clean-mm clean-perf clean-stream clean-upcall clean-args
+clean: clean-fork-join clean-gf clean-mm clean-perf clean-stream clean-upcall clean-args clean-portal-pingpong
 
 # Builds Binary Image Files
-images: image-fork-join image-gf image-mm image-perf image-stream image-upcall image-args
+images: image-fork-join image-gf image-mm image-perf image-stream image-upcall image-args image-portal-pingpong
 
 #===============================================================================
 # args
@@ -58,6 +58,22 @@ clean-args:
 # Build Buffer Benchmark Binary Image
 image-args:
 	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/args.img $(BINDIR) args
+
+#===============================================================================
+# portal-pingpong
+#===============================================================================
+
+# Builds args.
+all-portal-pingpong:
+	@$(MAKE) -C portal-pingpong all
+
+# Cleans object files.
+clean-portal-pingpong:
+	@$(MAKE) -C portal-pingpong clean
+
+# Build Buffer Benchmark Binary Image
+image-portal-pingpong:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-pingpong.img $(BINDIR) portal-pingpong
 
 #===============================================================================
 # fork-join
