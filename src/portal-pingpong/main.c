@@ -45,6 +45,8 @@ void master(int message_size)
 	portal_in = kportal_create(local);
 	portal_out = kportal_open(local, remote);
 
+		fence();
+
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
 			kportal_allow(portal_in, remote);
@@ -68,10 +70,12 @@ void slave(int message_size)
 	local  = knode_get_num();
 	remote = (local + 1) % 2;
 
+	kmemset(message, 0, message_size);
+
 	portal_in = kportal_create(local);
 	portal_out = kportal_open(local, remote);
 
-	kmemset(message, 0, message_size);
+		fence();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
@@ -108,13 +112,19 @@ int main(int argc, const char *argv[])
 	nclusters    = __atoi(argv[0]);
 	message_size = __atoi(argv[1]);
 
-	if (cluster_get_num() < nclusters)
-	{
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			master(message_size);
-		else
-			slave(message_size);
-	}
+	fence_setup(nclusters);
+
+		if (cluster_get_num() < nclusters)
+		{
+			if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+				master(message_size);
+			else
+				slave(message_size);
+		}
+
+	fence_cleanup();
+
+	kprintf("Ping Pong successfuly completed.");
 
 	kprintf(HLINE);
 
