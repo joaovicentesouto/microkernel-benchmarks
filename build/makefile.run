@@ -22,26 +22,28 @@
 # SOFTWARE.
 #
 
+export TIMEOUT = -1
+
 # Runs Unit Tests in all clusters
 run:
-	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) all --no-debug
+	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) all --no-debug $(TIMEOUT) $(ARGS)
 
 # Runs Unit Tests in IO Cluster.
 run-iocluster:
-	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) iocluster --no-debug
+	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) iocluster --no-debug $(TIMEOUT) $(ARGS)
 
 # Runs Unit Tests in Compute Cluster.
 run-ccluster:
-	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) ccluster --no-debug
+	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) ccluster --no-debug $(TIMEOUT) $(ARGS)
 
 # Runs Unit Tests in all clusters in debug mode.
 debug:
-	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) all --debug
+	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) all --debug $(TIMEOUT) $(ARGS)
 
 # Runs Unit Tests in IO Cluster in debug mode.
 debug-iocluster:
-	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) iocluster --debug
+	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) iocluster --debug $(TIMEOUT) $(ARGS)
 
 # Runs Unit Tests in Compute Cluster in debug mode.
 debug-ccluster:
-	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) ccluster --debug
+	bash $(TOOLSDIR)/nanvix-run.sh $(IMAGE) $(BINDIR) "$(BINARIES)" $(TARGET) ccluster --debug $(TIMEOUT) $(ARGS)
