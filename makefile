@@ -35,6 +35,9 @@ export RELEASE ?= false
 # Default Benchmark Kernel
 export KERNEL ?= fork-join
 
+# Default Benchmark Kernel
+export ARGS ?= "2"
+
 #===============================================================================
 # Directories
 #===============================================================================
