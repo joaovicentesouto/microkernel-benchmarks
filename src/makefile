@@ -35,13 +35,13 @@ export LIBS += -Wl,--no-whole-archive $(THEIR_LIBS)
 #===============================================================================
 
 # Builds Binary Files
-all: all-args all-portal-pingpong # all-fork-join all-gf all-mm all-perf all-stream all-upcall 
+all: all-args all-portal-pingpong
 
 # Cleans Object Files
-clean: clean-fork-join clean-gf clean-mm clean-perf clean-stream clean-upcall clean-args clean-portal-pingpong
+clean: clean-args clean-portal-pingpong
 
 # Builds Binary Image Files
-images: image-fork-join image-gf image-mm image-perf image-stream image-upcall image-args image-portal-pingpong
+images: image-args image-portal-pingpong
 
 #===============================================================================
 # args
@@ -74,99 +74,3 @@ clean-portal-pingpong:
 # Build Buffer Benchmark Binary Image
 image-portal-pingpong:
 	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-pingpong.img $(BINDIR) portal-pingpong
-
-#===============================================================================
-# fork-join
-#===============================================================================
-
-# Builds fork-join.
-all-fork-join:
-	@$(MAKE) -C fork-join all
-
-# Cleans object files.
-clean-fork-join:
-	@$(MAKE) -C fork-join clean
-
-# Build Buffer Benchmark Binary Image
-image-fork-join:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/fork-join.img $(BINDIR) fork-join
-
-#===============================================================================
-# gf
-#===============================================================================
-
-# Builds gf.
-all-gf:
-	@$(MAKE) -C gf all
-
-# Cleans object files.
-clean-gf:
-	@$(MAKE) -C gf clean
-
-# Build Buffer Benchmark Binary Image
-image-gf:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/gf.img $(BINDIR) gf
-
-#===============================================================================
-# mm
-#===============================================================================
-
-# Builds mm.
-all-mm:
-	@$(MAKE) -C mm all
-
-# Cleans object files.
-clean-mm:
-	@$(MAKE) -C mm clean
-
-# Build Buffer Benchmark Binary Image
-image-mm:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/mm.img $(BINDIR) mm
-
-#===============================================================================
-# perf
-#===============================================================================
-
-# Builds perf.
-all-perf:
-	@$(MAKE) -C perf all
-
-# Cleans object files.
-clean-perf:
-	@$(MAKE) -C perf clean
-
-# Build Buffer Benchmark Binary Image
-image-perf:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/perf.img $(BINDIR) perf
-
-#===============================================================================
-# stream
-#===============================================================================
-
-# Builds stream.
-all-stream:
-	@$(MAKE) -C stream all
-
-# Cleans object files.
-clean-stream:
-	@$(MAKE) -C stream clean
-
-# Build Buffer Benchmark Binary Image
-image-stream:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/stream.img $(BINDIR) stream
-
-#===============================================================================
-# upcall
-#===============================================================================
-
-# Builds upcall.
-all-upcall:
-	@$(MAKE) -C upcall all
-
-# Cleans object files.
-clean-upcall:
-	@$(MAKE) -C upcall clean
-
-# Build Buffer Benchmark Binary Image
-image-upcall:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/upcall.img $(BINDIR) upcall
