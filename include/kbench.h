@@ -33,7 +33,7 @@
 	 * @brief Number of benchmark iterations.
 	 */
 	#ifdef NDEBUG
-		#define NITERATIONS 30
+		#define NITERATIONS 1
 	#else
 		#define NITERATIONS 1
 	#endif
@@ -56,9 +56,19 @@
 	/**
 	 * @brief Generic fence.
 	 */
-	int fence_setup(int nclusters);
+	int fence_setup(int nioclusters, int ncclusters);
 	int fence_cleanup(void);
 	int fence(void);
+
+	/**
+	 * Build a list of the node ids.
+	 */
+	void build_node_list(int nioclusters, int ncclusters, int *nodes);
+
+	/**
+	 * Waits a number of cicles.
+	 */
+	void timer(uint64_t cicles);
 
 /*============================================================================*
  * Convert Functions                                                          *
@@ -67,73 +77,12 @@
 	/**
 	 *  Convert a string to a int.
 	 */
-	int __atoi(const char * str)
-	{
-		int result;
-
-		result = 0;
-
-		for (int i = 0; str[i] != '\0'; ++i)
-			result = (result * 10) + str[i] - '0';
-
-		return result;
-	}
-
-	/**
-	 *  Reverte a string.
-	 */
-	void reverse(char str[], int length)
-	{
-		char swap;
-		int start = 0;
-		int end = length -1;
-		while (start < end)
-		{
-			swap = *(str+start);
-			*(str+start) = *(str+end);
-			*(str+end) = swap;
-			start++;
-			end--;
-		}
-	}
+	int __atoi(const char * str);
 
 	/**
 	 *  Convert a int to a string.
 	 */
-	char* __itoa(int num, char* str, int base)
-	{
-		int i = 0;
-		bool isNegative = false;
-
-		if (num == 0)
-		{
-			str[i++] = '0';
-			str[i] = '\0';
-			return str;
-		}
-
-		if (num < 0 && base == 10)
-		{
-			isNegative = true;
-			num = -num;
-		}
-
-		while (num != 0)
-		{
-			int rem = num % base;
-			str[i++] = (rem > 9)? (rem-10) + 'a' : rem + '0';
-			num = num/base;
-		}
-
-		if (isNegative)
-			str[i++] = '-';
-
-		str[i] = '\0';
-
-		reverse(str, i);
-
-		return str;
-	}
+	char * __itoa(int num, char * str, int base);
 
 /*============================================================================*
  * Memory Functions                                                           *
