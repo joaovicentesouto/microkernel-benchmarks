@@ -36,7 +36,7 @@ export RELEASE ?= false
 export KERNEL ?= fork-join
 
 # Default Benchmark Kernel
-export ARGS ?= "2"
+export ARGS ?= "2 1024"
 
 #===============================================================================
 # Directories
