@@ -27,7 +27,9 @@
 #include <stdint.h>
 #include <kbench.h>
 
-#define MESSAGE_MSG_MAX (1*MB)
+#define MESSAGE_MSG_MAX (4096)
+
+static int nodeids[2];
 
 void master(int message_size)
 {
@@ -37,26 +39,38 @@ void master(int message_size)
 	int portal_out;
 	char message[MESSAGE_MSG_MAX];
 
-	local  = knode_get_num();
-	remote = (local + 1) % 2;
+	local  = nodeids[0];
+	remote = nodeids[1];
 
 	kmemset(message, 0, message_size);
 
-	portal_in = kportal_create(local);
-	portal_out = kportal_open(local, remote);
+	KASSERT((portal_in = kportal_create(local)) >= 0);
+	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
+
+		kprintf("    MASTER FENCE  local:%d and remote:%d", local, remote);
 
 		fence();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
-			kportal_allow(portal_in, remote);
-			kportal_read(portal_in, message, message_size);
+			kmemset(message, 0, message_size);
 
-			kportal_write(portal_out, message, message_size);
+			kprintf("    MASTER READ");
+			KASSERT(kportal_allow(portal_in, remote) == 0);
+			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
+
+			for (int j = 0; j < message_size; j++)
+			{
+				KASSERT(message[j] == 2);
+				message[j] = 1;
+			}
+
+			kprintf("    MASTER WRITE");
+			KASSERT(kportal_write(portal_out, message, message_size) >= message_size);
 		}
 
-	kportal_close(portal_out);
-	kportal_unlink(portal_in);
+	KASSERT(kportal_close(portal_out) == 0);
+	KASSERT(kportal_unlink(portal_in) == 0);
 }
 
 void slave(int message_size)
@@ -67,26 +81,45 @@ void slave(int message_size)
 	int portal_out;
 	char message[MESSAGE_MSG_MAX];
 
-	local  = knode_get_num();
-	remote = (local + 1) % 2;
+	kprintf("       ++ SLAVE INIT");
+
+	local  = nodeids[1];
+	remote = nodeids[0];
+
+	kprintf("       ++ SLAVE KMEM SET");
 
 	kmemset(message, 0, message_size);
 
-	portal_in = kportal_create(local);
-	portal_out = kportal_open(local, remote);
+	kprintf("       ++ SLAVE CREATE");
+
+	KASSERT((portal_in = kportal_create(local)) >= 0);
+	kprintf("       ++ SLAVE OPEN");
+	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
+
+		kprintf("    ++ SLAVE FENCE  local:%d and remote:%d", local, remote);
 
 		fence();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
-			kportal_write(portal_out, message, message_size);
+			for (int j = 0; j < message_size; j++)
+				message[j] = 2;
 
-			kportal_allow(portal_in, remote);
-			kportal_read(portal_in, message, message_size);
+			kprintf("    ++ SLAVE WRITE");
+			KASSERT(kportal_write(portal_out, message, message_size) >= message_size);
+
+			kmemset(message, 0, message_size);
+
+			kprintf("    ++ SLAVE READ");
+			KASSERT(kportal_allow(portal_in, remote) == 0);
+			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
+
+			for (int j = 0; j < message_size; j++)
+				KASSERT(message[j] == 1);
 		}
 
-	kportal_close(portal_out);
-	kportal_unlink(portal_in);
+	KASSERT(kportal_close(portal_out) == 0);
+	KASSERT(kportal_unlink(portal_in) == 0);
 }
 
 /*============================================================================*
@@ -104,29 +137,45 @@ int main(int argc, const char *argv[])
 	int nclusters;
 	int message_size;
 
-	kprintf(HLINE);
-
-	if (argc != 1)
+	if (argc != 2)
+	{
+		kprintf("Invalid arguments!");
 		return (-EINVAL);
+	}
 
 	nclusters    = __atoi(argv[0]);
 	message_size = __atoi(argv[1]);
 
-	fence_setup(nclusters);
+	build_node_list(1, 1, nodeids);
 
-		if (cluster_get_num() < nclusters)
-		{
-			if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-				master(message_size);
-			else
-				slave(message_size);
-		}
+	/* Filters the clusters involved. */
+	if (cluster_is_io())
+	{
+		if (knode_get_num() != nodeids[0])
+			return (0);
+	}
+	else
+	{
+		if (knode_get_num() != nodeids[1])
+			return (0);
+	}
+
+	kprintf(HLINE);
+
+	fence_setup(1, 1);
+
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+			master(message_size);
+		else
+			slave(message_size);
+
+		kprintf("Ping Pong successfuly completed.");
 
 	fence_cleanup();
 
-	kprintf("Ping Pong successfuly completed.");
-
 	kprintf(HLINE);
+
+	UNUSED(nclusters);
 
 	return (0);
 }
