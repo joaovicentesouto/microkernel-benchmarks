@@ -35,13 +35,13 @@ export LIBS += -Wl,--no-whole-archive $(THEIR_LIBS)
 #===============================================================================
 
 # Builds Binary Files
-all: all-args all-portal-pingpong
+all: all-args all-portal-pingpong all-mailbox-pingpong
 
 # Cleans Object Files
-clean: clean-args clean-portal-pingpong
+clean: clean-args clean-portal-pingpong clean-mailbox-pingpong
 
 # Builds Binary Image Files
-images: image-args image-portal-pingpong
+images: image-args image-portal-pingpong image-mailbox-pingpong
 
 #===============================================================================
 # args
@@ -74,3 +74,19 @@ clean-portal-pingpong:
 # Build Buffer Benchmark Binary Image
 image-portal-pingpong:
 	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-pingpong.img $(BINDIR) portal-pingpong
+
+#===============================================================================
+# mailbox-pingpong
+#===============================================================================
+
+# Builds args.
+all-mailbox-pingpong:
+	@$(MAKE) -C mailbox-pingpong all
+
+# Cleans object files.
+clean-mailbox-pingpong:
+	@$(MAKE) -C mailbox-pingpong clean
+
+# Build Buffer Benchmark Binary Image
+image-mailbox-pingpong:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/mailbox-pingpong.img $(BINDIR) mailbox-pingpong
