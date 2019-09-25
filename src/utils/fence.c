@@ -88,8 +88,13 @@ int fence(void)
 		KASSERT(ksync_wait(__syncin) == 0);
 		KASSERT(ksync_signal(__syncout) == 0);
 	}
+
+	/* Slave cluster */
 	else
 	{
+		/* Waits one second. */
+		timer(CLUSTER_FREQ);
+
 		KASSERT(ksync_signal(__syncout) == 0);
 		KASSERT(ksync_wait(__syncin) == 0);
 	}
