@@ -47,15 +47,12 @@ void master(int message_size)
 	KASSERT((portal_in = kportal_create(local)) >= 0);
 	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
 
-		kprintf("    MASTER FENCE  local:%d and remote:%d", local, remote);
-
 		fence();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
 			kmemset(message, 0, message_size);
 
-			kprintf("    MASTER READ");
 			KASSERT(kportal_allow(portal_in, remote) == 0);
 			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
 
@@ -65,7 +62,6 @@ void master(int message_size)
 				message[j] = 1;
 			}
 
-			kprintf("    MASTER WRITE");
 			KASSERT(kportal_write(portal_out, message, message_size) >= message_size);
 		}
 
@@ -81,22 +77,13 @@ void slave(int message_size)
 	int portal_out;
 	char message[MESSAGE_MSG_MAX];
 
-	kprintf("       ++ SLAVE INIT");
-
 	local  = nodeids[1];
 	remote = nodeids[0];
 
-	kprintf("       ++ SLAVE KMEM SET");
-
 	kmemset(message, 0, message_size);
 
-	kprintf("       ++ SLAVE CREATE");
-
 	KASSERT((portal_in = kportal_create(local)) >= 0);
-	kprintf("       ++ SLAVE OPEN");
 	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
-
-		kprintf("    ++ SLAVE FENCE  local:%d and remote:%d", local, remote);
 
 		fence();
 
@@ -105,12 +92,10 @@ void slave(int message_size)
 			for (int j = 0; j < message_size; j++)
 				message[j] = 2;
 
-			kprintf("    ++ SLAVE WRITE");
 			KASSERT(kportal_write(portal_out, message, message_size) >= message_size);
 
 			kmemset(message, 0, message_size);
 
-			kprintf("    ++ SLAVE READ");
 			KASSERT(kportal_allow(portal_in, remote) == 0);
 			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
 
@@ -136,6 +121,8 @@ int main(int argc, const char *argv[])
 {
 	int nclusters;
 	int message_size;
+
+	UNUSED(nclusters);
 
 	if (argc != 2)
 	{
@@ -169,13 +156,11 @@ int main(int argc, const char *argv[])
 		else
 			slave(message_size);
 
-		kprintf("Ping Pong successfuly completed.");
+		kprintf("[portal] Ping Pong successfuly completed.");
 
 	fence_cleanup();
 
 	kprintf(HLINE);
-
-	UNUSED(nclusters);
 
 	return (0);
 }
