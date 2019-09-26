@@ -33,9 +33,10 @@
 
 struct __mailbox_args
 {
-	int nclusters;
+	int nioclusters;
+	int ncclusters;
 	int message_size;
-	char unused[(MAILBOX_MSG_SIZE - (2 * sizeof(int)))];
+	char unused[(MAILBOX_MSG_SIZE - (3 * sizeof(int)))];
 };
 
 /*
@@ -55,64 +56,28 @@ NORETURN  void ___nanvix_exit(int status)
 }
 
 /*
- * Build a list of the node ids.
- */
-void build_node_list(int nioclusters, int ncclusters, int *nodes)
-{
-	int base;
-	int step;
-	int index;
-	int max_clusters;
-
-	index = 0;
-
-	/* Build IDs of the IO Clusters. */
-	base         = 0;
-	max_clusters = PROCESSOR_IOCLUSTERS_NUM;
-	step         = (PROCESSOR_NOC_IONODES_NUM / PROCESSOR_IOCLUSTERS_NUM);
-
-	for (int i = 0; i < max_clusters && i < nioclusters; i++, index++)
-		nodes[index] = base + (i * step);
-
-	/* Build IDs of the Compute Clusters. */
-	base         = PROCESSOR_IOCLUSTERS_NUM * (PROCESSOR_NOC_IONODES_NUM / PROCESSOR_IOCLUSTERS_NUM);
-	max_clusters = PROCESSOR_CCLUSTERS_NUM;
-	step         = (PROCESSOR_NOC_CNODES_NUM / PROCESSOR_CCLUSTERS_NUM);
-
-	for (int i = 0; i < max_clusters && i < ncclusters; i++, index++)
-		nodes[index] = base + (i * step);
-}
-
-/*
  * Entry point of the program.
  */
 void ___start(int argc, const char *argv[], char **envp)
 {
 	int ret;
-	// uint64_t t0, cicles, limit;
 	int _argc;
 	char *_argv[1];
-	char default_argv[2][100];
+	char default_argv[3][100];
 	struct __mailbox_args __mailbox_args;
 
 	UNUSED(argc);
 	UNUSED(envp);
 
-	__mailbox_args.nclusters = 0;
-
-	kprintf(" crt0 SETUP");
 	fence_setup(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM);
 	__stdmailbox_setup();
 
 		if (cluster_get_num() != PROCESSOR_CLUSTERNUM_MASTER)
 		{
-			// int dummy = 20;
-			// while (dummy--)
-				kprintf("    dummy");
-
 			kprintf("    1. dummy");
 
 				timer(5 * CLUSTER_FREQ);
+				timer(CLUSTER_FREQ);
 
 			kprintf("    2. dummy");
 		}
@@ -125,8 +90,9 @@ void ___start(int argc, const char *argv[], char **envp)
 			int nodenum;
 
 			nodenum = 0;
-			__mailbox_args.nclusters    = __atoi(argv[1]);
-			__mailbox_args.message_size = __atoi(argv[2]);
+			__mailbox_args.nioclusters  = __atoi(argv[1]);
+			__mailbox_args.ncclusters   = __atoi(argv[2]);
+			__mailbox_args.message_size = __atoi(argv[3]);
 
 			for (int i = 0; i < PROCESSOR_IOCLUSTERS_NUM; i++)
 			{
@@ -146,9 +112,10 @@ void ___start(int argc, const char *argv[], char **envp)
 				nodenum += (PROCESSOR_NOC_CNODES_NUM / PROCESSOR_CCLUSTERS_NUM);
 			}
 
-			_argc    = 2;
+			_argc    = 3;
 			_argv[0] = (char *) argv[1];
 			_argv[1] = (char *) argv[2];
+			_argv[2] = (char *) argv[3];
 		}
 		else
 		{
@@ -156,22 +123,20 @@ void ___start(int argc, const char *argv[], char **envp)
 
 			inbox = stdinbox_get();
 
-			kprintf("    mailbox BEFORE %d", __mailbox_args.nclusters);
-				kmailbox_read(inbox, &__mailbox_args, MAILBOX_MSG_SIZE);
-			kprintf("    mailbox AFTER %d", __mailbox_args.nclusters);
+			kmailbox_read(inbox, &__mailbox_args, MAILBOX_MSG_SIZE);
 
-			__itoa(__mailbox_args.nclusters, default_argv[0], 10);
-			__itoa(__mailbox_args.message_size, default_argv[1], 10);
-			kprintf("                  ATOA %s", default_argv[0]);
+			__itoa(__mailbox_args.nioclusters,  default_argv[0], 10);
+			__itoa(__mailbox_args.ncclusters,   default_argv[1], 10);
+			__itoa(__mailbox_args.message_size, default_argv[2], 10);
 
-			_argc    = 2;
+			_argc    = 3;
 			_argv[0] = default_argv[0];
 			_argv[1] = default_argv[1];
+			_argv[2] = default_argv[2];
 		}
 
 		fence();
 
-	kprintf(" crt0 EXIT");
 	__stdmailbox_cleanup();
 	fence_cleanup();
 
