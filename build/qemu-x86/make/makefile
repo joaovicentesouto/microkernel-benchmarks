@@ -36,7 +36,7 @@ export CFLAGS += -D __i486__        # Core
 #===============================================================================
 
 # Toolchain Directory
-export TOOLCHAIN_DIR ?= $(UTILSDIR)/toolchain/i486/bin
+export TOOLCHAIN_DIR ?= $(TOOLSDIR)/toolchain/i486/bin
 
 # Toolchain
 export CC = $(TOOLCHAIN_DIR)/i486-elf-gcc
@@ -66,6 +66,10 @@ export THEIR_LIBS := -lgcc
 # Builds everything.
 all-target:
 	$(MAKE) -C $(SRCDIR) all
+
+# Builds All Binary Image Files.
+all-images: all-target
+	@$(MAKE) -C $(SRCDIR) images
 
 # Cleans everything.
 clean-target:

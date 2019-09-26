@@ -37,7 +37,7 @@ export CFLAGS += -D __mor1kx__           # Core Variant
 #===============================================================================
 
 # Toolchain Directory
-export TOOLCHAIN_DIR ?= $(UTILSDIR)/toolchain/or1k/bin/
+export TOOLCHAIN_DIR ?= $(TOOLSDIR)/toolchain/or1k/bin/
 
 # Toolchain
 export CC = $(TOOLCHAIN_DIR)/or1k-elf-gcc
@@ -68,6 +68,10 @@ export THEIR_LIBS := -lgcc
 # Builds everything.
 all-target:
 	$(MAKE) -C $(SRCDIR) all
+
+# Builds All Binary Image Files.
+all-images: all-target
+	@$(MAKE) -C $(SRCDIR) images
 
 # Cleans everything.
 clean-target:

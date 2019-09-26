@@ -61,6 +61,10 @@ export THEIR_LIBS = -lvbsp -lmppanoc -lmpparouting -mhypervisor
 # Builds everything.
 all-target: all-k1bio all-k1bdp
 
+# Builds All Binary Image Files.
+all-images: all-target
+	@$(MAKE) -C $(SRCDIR) images
+
 # Builds everything for node cluster variant.
 all-k1bdp:
 	@$(MAKE) -C $(SRCDIR) all                          \
