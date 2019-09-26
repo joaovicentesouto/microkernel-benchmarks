@@ -30,7 +30,7 @@
 
 #define MESSAGE_MSG_MAX (4096)
 
-static int nodeids[2];
+static int nodeids[PROCESSOR_CLUSTERS_NUM];
 
 void master(int nslaves, int message_size)
 {
