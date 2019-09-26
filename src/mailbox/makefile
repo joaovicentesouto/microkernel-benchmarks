@@ -23,53 +23,30 @@
 #
 
 #===============================================================================
-# Sources, Objects and Binary
+# Generic Rules
 #===============================================================================
 
-# C Source Files
-SRC += $(wildcard *.c)
-SRC += $(wildcard ../utils/*.c)
+# Builds Binary Files
+all: all-pingpong
 
-# Object Files
-OBJ += $(SRC:.c=.$(OBJ_SUFFIX).o)
+# Cleans Object Files
+clean: clean-pingpong
 
-# Binary File
-ELFBIN = mailbox-pingpong-$(OBJ_SUFFIX)
+# Builds Binary Image Files
+images: image-pingpong
 
 #===============================================================================
+# mailbox-pingpong
+#===============================================================================
 
-# Builds All Object Files
-all: $(OBJ)
-ifeq ($(VERBOSE), no)
-	@echo [CC] $(BINDIR)/$(ELFBIN)
-	@$(CC) $(LDFLAGS) -L $(LINKERDIR)/ -T link.ld -o $(BINDIR)/$(ELFBIN) $(OBJ) $(LIBS)
-else
-	$(CC) $(LDFLAGS) -L $(LINKERDIR)/ -T link.ld -o $(BINDIR)/$(ELFBIN) $(OBJ) $(LIBS)
-endif
+# Builds args.
+all-pingpong:
+	@$(MAKE) -C pingpong all
 
-# Cleans All Object Files
-clean:
-ifeq ($(VERBOSE), no)
-	@echo [CLEAN] $(OBJ)
-	@rm -rf $(OBJ)
-else
-	rm -rf $(OBJ)
-endif
+# Cleans object files.
+clean-pingpong:
+	@$(MAKE) -C pingpong clean
 
-# Cleans Everything
-distclean: clean
-ifeq ($(VERBOSE), no)
-	@echo [CLEAN] $(BINDIR)/$(ELFBIN)
-	@rm -rf $(BINDIR)/$(ELFBIN)
-else
-	rm -rf $(BINDIR)/$(ELFBIN))
-endif
-
-# Builds a C Source file
-%.$(OBJ_SUFFIX).o: %.c
-ifeq ($(VERBOSE), no)
-	@echo [CC] $@
-	@$(CC) $(CFLAGS) $< -c -o $@
-else
-	$(CC) $(CFLAGS) $< -c -o $@
-endif
+# Build Buffer Benchmark Binary Image
+image-pingpong:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/mailbox-pingpong.img $(BINDIR) mailbox-pingpong
