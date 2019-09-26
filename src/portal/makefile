@@ -23,53 +23,46 @@
 #
 
 #===============================================================================
-# Sources, Objects and Binary
+# Generic Rules
 #===============================================================================
 
-# C Source Files
-SRC += $(wildcard *.c)
-SRC += $(wildcard ../utils/*.c)
+# Builds Binary Files
+all: all-pingpong all-broadcast
 
-# Object Files
-OBJ += $(SRC:.c=.$(OBJ_SUFFIX).o)
+# Cleans Object Files
+clean: clean-pingpong clean-broadcast
 
-# Binary File
-ELFBIN = portal-pingpong-$(OBJ_SUFFIX)
+# Builds Binary Image Files
+images: image-pingpong image-broadcast
 
 #===============================================================================
+# Ping Pong
+#===============================================================================
 
-# Builds All Object Files
-all: $(OBJ)
-ifeq ($(VERBOSE), no)
-	@echo [CC] $(BINDIR)/$(ELFBIN)
-	@$(CC) $(LDFLAGS) -L $(LINKERDIR)/ -T link.ld -o $(BINDIR)/$(ELFBIN) $(OBJ) $(LIBS)
-else
-	$(CC) $(LDFLAGS) -L $(LINKERDIR)/ -T link.ld -o $(BINDIR)/$(ELFBIN) $(OBJ) $(LIBS)
-endif
+# Builds args.
+all-pingpong:
+	@$(MAKE) -C pingpong all
 
-# Cleans All Object Files
-clean:
-ifeq ($(VERBOSE), no)
-	@echo [CLEAN] $(OBJ)
-	@rm -rf $(OBJ)
-else
-	rm -rf $(OBJ)
-endif
+# Cleans object files.
+clean-pingpong:
+	@$(MAKE) -C pingpong clean
 
-# Cleans Everything
-distclean: clean
-ifeq ($(VERBOSE), no)
-	@echo [CLEAN] $(BINDIR)/$(ELFBIN)
-	@rm -rf $(BINDIR)/$(ELFBIN)
-else
-	rm -rf $(BINDIR)/$(ELFBIN))
-endif
+# Build Buffer Benchmark Binary Image
+image-pingpong:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-pingpong.img $(BINDIR) portal-pingpong
 
-# Builds a C Source file
-%.$(OBJ_SUFFIX).o: %.c
-ifeq ($(VERBOSE), no)
-	@echo [CC] $@
-	@$(CC) $(CFLAGS) $< -c -o $@
-else
-	$(CC) $(CFLAGS) $< -c -o $@
-endif
+#===============================================================================
+# Broadcast
+#===============================================================================
+
+# Builds args.
+all-broadcast:
+	@$(MAKE) -C broadcast all
+
+# Cleans object files.
+clean-broadcast:
+	@$(MAKE) -C broadcast clean
+
+# Build Buffer Benchmark Binary Image
+image-broadcast:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-broadcast.img $(BINDIR) portal-broadcast

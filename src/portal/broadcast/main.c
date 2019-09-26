@@ -1,0 +1,181 @@
+/*
+ * MIT License
+ *
+ * Copyright(c) 2018 Pedro Henrique Penna <pedrohenriquepenna@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include <nanvix/sys/portal.h>
+#include <nanvix/sys/sync.h>
+#include <nanvix/sys/noc.h>
+#include <stdint.h>
+#include <kbench.h>
+
+#define MESSAGE_MSG_MAX (4096)
+
+static int nodeids[2];
+
+void master(int nslaves, int message_size)
+{
+	int local;
+	int syncid;
+	int sync_nodelist[5];
+	int portalids[4];
+	char message[MESSAGE_MSG_MAX];
+
+	local = nodeids[0];
+	sync_nodelist[0] = nodeids[0];
+
+	kmemset(message, 1, message_size);
+
+		fence();
+
+		for (unsigned i = 0; i < NITERATIONS; ++i)
+		{
+			for (int j = 0; j < nslaves; j += 4)
+			{
+				int index = 0;
+
+				/* Opens connectors. */
+				for (int remote = (j + 1); remote <= (j + 4) && remote <= nslaves; ++remote)
+				{
+					KASSERT((portalids[index++] = kportal_open(local, nodeids[remote])) >= 0);
+					sync_nodelist[index] = nodeids[remote];
+				}
+
+				KASSERT((syncid = ksync_open(sync_nodelist, ++index, SYNC_ONE_TO_ALL)) >= 0);
+
+				/* Releases slaves to read (send permission ack to sender). */
+				KASSERT(ksync_signal(syncid) == 0);
+
+				/* Sends the message for current slaves. */
+				for (int k = 0; k < index; ++k)
+					KASSERT(kportal_write(portalids[k], message, message_size) == message_size);
+
+				/* Closes connectors. */
+				KASSERT(ksync_close(syncid) == 0);
+				for (int k = 0; k < index; ++k)
+					KASSERT(kportal_close(portalids[k]) == 0);
+			}
+		}
+}
+
+void slave(int message_size)
+{
+	int local;
+	int remote;
+	int syncid;
+	int sync_nodelist[2];
+	int portalid;
+	char message[MESSAGE_MSG_MAX];
+
+	local  = knode_get_num();
+	remote = nodeids[0];
+	sync_nodelist[0] = nodeids[0];
+	sync_nodelist[1] = local;
+
+	kmemset(message, 0, message_size);
+
+	KASSERT((syncid = ksync_create(sync_nodelist, 2, SYNC_ONE_TO_ALL)) >= 0);
+	KASSERT((portalid = kportal_create(local)) >= 0);
+
+		fence();
+
+		for (unsigned i = 0; i < NITERATIONS; ++i)
+		{
+			kmemset(message, 0, message_size);
+
+			KASSERT(ksync_wait(syncid) == 0);
+
+			KASSERT(kportal_allow(portalid, remote) == 0);
+			KASSERT(kportal_read(portalid, message, message_size) == message_size);
+
+			for (int j = 0; j < message_size; ++j)
+				KASSERT(message[j] == 1);
+		}
+
+	KASSERT(kportal_unlink(portalid) == 0);
+	KASSERT(ksync_unlink(syncid) == 0);
+}
+
+/*============================================================================*
+ * Benchmark Driver                                                           *
+ *============================================================================*/
+
+/**
+ * @brief Performance Monitoring Overhead Benchmark
+ *
+ * @param argc Argument counter.
+ * @param argv Argument variables.
+ */
+int main(int argc, const char *argv[])
+{
+	int ncclusters;
+	int message_size;
+
+	if (argc != 3)
+	{
+		kprintf("[portal][broadcast] Invalid arguments! (%d)", argc);
+		return (-EINVAL);
+	}
+
+	ncclusters   = __atoi(argv[1]);
+	message_size = __atoi(argv[2]);
+
+	if (ncclusters > 16 || message_size == 0)
+	{
+		kprintf("[portal][broadcast] Bad arguments! (%d, %d)", ncclusters, message_size);
+		return (-EINVAL);
+	}
+
+	nodeids[0] = 4;
+	for (int i = 0; i < ncclusters; ++i)
+		nodeids[(i + 1)] = 8 + i;
+
+	/* Filters the clusters involved. */
+	if (cluster_is_compute())
+	{
+		if (knode_get_num() >= 8 + ncclusters)
+			return (0);
+	}
+
+	kprintf(HLINE);
+
+	fence_setup(2, ncclusters);
+
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+			fence();
+		else if (knode_get_num() == nodeids[0])
+			master(ncclusters, message_size);
+		else
+			slave(message_size);
+
+		kprintf("[portal][broadcast] Successfuly completed.");
+
+		fence();
+
+		kprintf("[portal][broadcast] Exit.");
+
+	fence_cleanup();
+
+	kprintf(HLINE);
+
+	return (0);
+}

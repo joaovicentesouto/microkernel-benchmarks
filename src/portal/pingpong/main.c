@@ -119,19 +119,15 @@ void slave(int message_size)
  */
 int main(int argc, const char *argv[])
 {
-	int nclusters;
 	int message_size;
 
-	UNUSED(nclusters);
-
-	if (argc != 2)
+	if (argc != 3)
 	{
-		kprintf("Invalid arguments!");
+		kprintf("[portal][pingpong] Invalid arguments! (%d)", argc);
 		return (-EINVAL);
 	}
 
-	nclusters    = __atoi(argv[0]);
-	message_size = __atoi(argv[1]);
+	message_size = __atoi(argv[2]);
 
 	build_node_list(1, 1, nodeids);
 
@@ -156,7 +152,7 @@ int main(int argc, const char *argv[])
 		else
 			slave(message_size);
 
-		kprintf("[portal] Ping Pong successfuly completed.");
+		kprintf("[portal][pingpong] Successfuly completed.");
 
 	fence_cleanup();
 
