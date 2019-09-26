@@ -29,34 +29,25 @@
  * @brief Kernel standard sync.
  */
 static int __syncin = -1;
-static int __syncout = -1;
+static int __nnodes = -1;
+static int __nodes[PROCESSOR_CLUSTERS_NUM];
 
 /**
  * @todo TODO: provide a detailed description for this function.
  */
 int fence_setup(int nioclusters, int ncclusters)
 {
-	unsigned open_mode;
-	unsigned create_mode;
-	int nodes[PROCESSOR_CLUSTERS_NUM];
+	build_node_list(nioclusters, ncclusters, __nodes);
 
-	build_node_list(nioclusters, ncclusters, nodes);
+	__nnodes = (nioclusters + ncclusters);
 
 	/* Master cluster */
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-	{
-		create_mode = SYNC_ALL_TO_ONE;
-		open_mode   = SYNC_ONE_TO_ALL;
-	}
-	else
-	{
-		create_mode = SYNC_ONE_TO_ALL;
-		open_mode   = SYNC_ALL_TO_ONE;
-	}
+		KASSERT((__syncin  = ksync_create(__nodes, __nnodes, SYNC_ALL_TO_ONE)) >= 0);
 
 	/* Slave cluster. */
-	KASSERT((__syncin  = ksync_create(nodes, (nioclusters + ncclusters), create_mode)) >= 0);
-	KASSERT((__syncout = ksync_open(nodes, (nioclusters + ncclusters), open_mode)) >= 0);
+	else
+		KASSERT((__syncin  = ksync_create(__nodes, __nnodes, SYNC_ONE_TO_ALL)) >= 0);
 
 	return (0);
 }
@@ -67,10 +58,8 @@ int fence_setup(int nioclusters, int ncclusters)
 int fence_cleanup(void)
 {
 	KASSERT(ksync_unlink(__syncin) == 0);
-	KASSERT(ksync_close(__syncout) == 0);
 
 	__syncin  = -1;
-	__syncout = -1;
 
 	return (0);
 }
@@ -80,24 +69,33 @@ int fence_cleanup(void)
  */
 int fence(void)
 {
+	int syncout;
+
 	kprintf("    + fence");
 
 	/* Master cluster */
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 	{
+		KASSERT((syncout = ksync_open(__nodes, __nnodes, SYNC_ONE_TO_ALL)) >= 0);
+
 		KASSERT(ksync_wait(__syncin) == 0);
-		KASSERT(ksync_signal(__syncout) == 0);
+		KASSERT(ksync_signal(syncout) == 0);
+
 	}
 
 	/* Slave cluster */
 	else
 	{
-		/* Waits one second. */
+		KASSERT((syncout = ksync_open(__nodes, __nnodes, SYNC_ALL_TO_ONE)) >= 0);
+
+		/* Waits half second. */
 		timer(CLUSTER_FREQ);
 
-		KASSERT(ksync_signal(__syncout) == 0);
+		KASSERT(ksync_signal(syncout) == 0);
 		KASSERT(ksync_wait(__syncin) == 0);
 	}
+
+	KASSERT(ksync_close(syncout) == 0);
 
 	kprintf("    - fence");
 
