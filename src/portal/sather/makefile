@@ -34,7 +34,7 @@ SRC += $(wildcard $(UTILSDIR)/*.c)
 OBJ += $(SRC:.c=.$(OBJ_SUFFIX).o)
 
 # Binary File
-ELFBIN = portal-broadcast-$(OBJ_SUFFIX)
+ELFBIN = portal-sather-$(OBJ_SUFFIX)
 
 #===============================================================================
 
