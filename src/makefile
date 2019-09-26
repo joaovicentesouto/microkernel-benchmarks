@@ -30,63 +30,24 @@
 export LIBS  = -Wl,--whole-archive $(LIBNANVIX) $(LIBKERNEL) $(LIBHAL)
 export LIBS += -Wl,--no-whole-archive $(THEIR_LIBS)
 
+# Utils code
+export UTILSDIR = $(CURDIR)/utils
+
 #===============================================================================
 # Generic Rules
 #===============================================================================
 
 # Builds Binary Files
-all: all-args all-portal-pingpong all-mailbox-pingpong
-
-# Cleans Object Files
-clean: clean-args clean-portal-pingpong clean-mailbox-pingpong
+all:
+	@$(MAKE) -C mailbox all
+	@$(MAKE) -C portal all
 
 # Builds Binary Image Files
-images: image-args image-portal-pingpong image-mailbox-pingpong
+images:
+	@$(MAKE) -C mailbox images
+	@$(MAKE) -C portal images
 
-#===============================================================================
-# args
-#===============================================================================
-
-# Builds args.
-all-args:
-	@$(MAKE) -C args all
-
-# Cleans object files.
-clean-args:
-	@$(MAKE) -C args clean
-
-# Build Buffer Benchmark Binary Image
-image-args:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/args.img $(BINDIR) args
-
-#===============================================================================
-# portal-pingpong
-#===============================================================================
-
-# Builds args.
-all-portal-pingpong:
-	@$(MAKE) -C portal-pingpong all
-
-# Cleans object files.
-clean-portal-pingpong:
-	@$(MAKE) -C portal-pingpong clean
-
-# Build Buffer Benchmark Binary Image
-image-portal-pingpong:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-pingpong.img $(BINDIR) portal-pingpong
-
-#===============================================================================
-# mailbox-pingpong
-#===============================================================================
-
-# Builds args.
-all-mailbox-pingpong:
-	@$(MAKE) -C mailbox-pingpong all
-
-# Cleans object files.
-clean-mailbox-pingpong:
-	@$(MAKE) -C mailbox-pingpong clean
-
-# Build Buffer Benchmark Binary Image
-image-mailbox-pingpong:
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/mailbox-pingpong.img $(BINDIR) mailbox-pingpong
+# Cleans Object Files
+clean:
+	@$(MAKE) -C mailbox clean
+	@$(MAKE) -C portal clean
