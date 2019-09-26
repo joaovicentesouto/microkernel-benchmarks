@@ -36,7 +36,7 @@ export RELEASE ?= false
 export KERNEL ?= fork-join
 
 # Default Benchmark Kernel
-export ARGS ?= "2 1024"
+export ARGS ?= "2 1 1024"
 
 #===============================================================================
 # Directories
@@ -106,8 +106,7 @@ all: image
 make-dirs:
 	@mkdir -p $(INCDIR) $(IMGDIR) $(LIBDIR) $(BINDIR)
 
-image: | make-dirs all-target
-	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMAGE) $(BINDIR) "$(BINARIES)"
+image: | make-dirs all-images
 
 # Cleans builds.
 clean: clean-target
