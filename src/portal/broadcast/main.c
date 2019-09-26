@@ -30,7 +30,7 @@
 
 #define MESSAGE_MSG_MAX (4096)
 
-static int nodeids[2];
+static int nodeids[PROCESSOR_CLUSTERS_NUM];
 
 void master(int nslaves, int message_size)
 {
@@ -39,6 +39,9 @@ void master(int nslaves, int message_size)
 	int sync_nodelist[5];
 	int portalids[4];
 	char message[MESSAGE_MSG_MAX];
+
+	for (int k = 1; k <= nslaves; ++k)
+		kprintf("    == nodes %d", nodeids[k]);
 
 	local = nodeids[0];
 	sync_nodelist[0] = nodeids[0];
@@ -65,13 +68,19 @@ void master(int nslaves, int message_size)
 				/* Releases slaves to read (send permission ack to sender). */
 				KASSERT(ksync_signal(syncid) == 0);
 
+				for (int k = 1; k < index; ++k)
+					kprintf("    ++ Sinc with %d", sync_nodelist[k]);
+
 				/* Sends the message for current slaves. */
-				for (int k = 0; k < index; ++k)
+				for (int k = 0; k < (index - 1); ++k)
+				{
+					kprintf("    ++ Send to %d", nodeids[(j + 1) + k]);
 					KASSERT(kportal_write(portalids[k], message, message_size) == message_size);
+				}
 
 				/* Closes connectors. */
 				KASSERT(ksync_close(syncid) == 0);
-				for (int k = 0; k < index; ++k)
+				for (int k = 0; k < (index - 1); ++k)
 					KASSERT(kportal_close(portalids[k]) == 0);
 			}
 		}
@@ -139,11 +148,13 @@ int main(int argc, const char *argv[])
 	ncclusters   = __atoi(argv[1]);
 	message_size = __atoi(argv[2]);
 
-	if (ncclusters > 16 || message_size == 0)
+	if (ncclusters == 0 || ncclusters > 16 || message_size == 0)
 	{
 		kprintf("[portal][broadcast] Bad arguments! (%d, %d)", ncclusters, message_size);
 		return (-EINVAL);
 	}
+
+	kprintf("NUMBER OF SLAVES %d", ncclusters);
 
 	nodeids[0] = 4;
 	for (int i = 0; i < ncclusters; ++i)
@@ -162,12 +173,15 @@ int main(int argc, const char *argv[])
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 			fence();
-		else if (knode_get_num() == nodeids[0])
-			master(ncclusters, message_size);
-		else
-			slave(message_size);
+		else 
+		{
+			if (knode_get_num() == nodeids[0])
+				master(ncclusters, message_size);
+			else
+				slave(message_size);
 
-		kprintf("[portal][broadcast] Successfuly completed.");
+			kprintf("[portal][broadcast] Successfuly completed.");
+		}
 
 		fence();
 
