@@ -27,13 +27,13 @@
 #===============================================================================
 
 # Builds Binary Files
-all: all-pingpong all-broadcast
+all: all-pingpong all-broadcast all-sather all-gather
 
 # Cleans Object Files
-clean: clean-pingpong clean-broadcast
+clean: clean-pingpong clean-broadcast clean-sather clean-gather
 
 # Builds Binary Image Files
-images: image-pingpong image-broadcast
+images: image-pingpong image-broadcast image-sather image-gather
 
 #===============================================================================
 # Ping Pong
@@ -66,3 +66,35 @@ clean-broadcast:
 # Build Buffer Benchmark Binary Image
 image-broadcast:
 	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-broadcast.img $(BINDIR) portal-broadcast
+
+#===============================================================================
+# Sather
+#===============================================================================
+
+# Builds args.
+all-sather:
+	@$(MAKE) -C sather all
+
+# Cleans object files.
+clean-sather:
+	@$(MAKE) -C sather clean
+
+# Build Buffer Benchmark Binary Image
+image-sather:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-sather.img $(BINDIR) portal-sather
+
+#===============================================================================
+# Gather
+#===============================================================================
+
+# Builds args.
+all-gather:
+	@$(MAKE) -C gather all
+
+# Cleans object files.
+clean-gather:
+	@$(MAKE) -C gather clean
+
+# Build Buffer Benchmark Binary Image
+image-gather:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-gather.img $(BINDIR) portal-gather
