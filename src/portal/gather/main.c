@@ -29,7 +29,7 @@
 
 #define MESSAGE_MSG_MAX (4096)
 
-static int nodeids[2];
+static int nodeids[PROCESSOR_CLUSTERS_NUM];
 
 void master(int nslaves, int message_size)
 {
@@ -68,10 +68,14 @@ void master(int nslaves, int message_size)
 				char value = nodeids[j];
 				char * curr_message = &message[((j - 1) * message_size)];
 
-				for (int k = 1; k <= message_size; ++k)
+				kprintf("I WILL SEE nodeid:%d => %d", (int) value, (int) curr_message[0]);
+
+				for (int k = 0; k < message_size; ++k)
 					KASSERT(curr_message[k] == value);
 			}
 		}
+
+		fence();
 
 	KASSERT(kportal_unlink(portalid) == 0);
 }
@@ -81,12 +85,14 @@ void slave(int message_size)
 	int local;
 	int remote;
 	int portalid;
-	char message[PROCESSOR_CLUSTERS_NUM * MESSAGE_MSG_MAX];
+	char message[MESSAGE_MSG_MAX];
 
 	local  = knode_get_num();
 	remote = nodeids[0];
 
 	kmemset(message, (char) local, message_size);
+
+	kprintf("+ I WILL SEND %d", (int) message[0]);
 
 	KASSERT((portalid = kportal_open(local, remote)) >= 0);
 
@@ -94,8 +100,10 @@ void slave(int message_size)
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 			KASSERT(kportal_write(portalid, message, message_size) == message_size);
+		
+		fence();
 
-	KASSERT(kportal_unlink(portalid) == 0);
+	KASSERT(kportal_close(portalid) == 0);
 }
 
 /*============================================================================*
