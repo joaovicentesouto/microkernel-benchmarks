@@ -29,25 +29,23 @@
 
 #define MESSAGE_MSG_MAX (4096)
 
-static int nodeids[2];
-
-void master(int message_size)
+void do_master(int nodes[], int message_size)
 {
 	int local;
-	int remote;
+	indo_t remote;
 	int portal_in;
 	int portal_out;
 	char message[MESSAGE_MSG_MAX];
 
-	local  = nodeids[0];
-	remote = nodeids[1];
+	local  = nodes[0];
+	remote = nodes[1];
 
 	kmemset(message, 0, message_size);
 
 	KASSERT((portal_in = kportal_create(local)) >= 0);
 	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
@@ -69,7 +67,7 @@ void master(int message_size)
 	KASSERT(kportal_unlink(portal_in) == 0);
 }
 
-void slave(int message_size)
+void slave(int nodes[], int message_size)
 {
 	int local;
 	int remote;
@@ -77,15 +75,15 @@ void slave(int message_size)
 	int portal_out;
 	char message[MESSAGE_MSG_MAX];
 
-	local  = nodeids[1];
-	remote = nodeids[0];
+	local  = nodes[1];
+	remote = nodes[0];
 
 	kmemset(message, 0, message_size);
 
 	KASSERT((portal_in = kportal_create(local)) >= 0);
 	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
@@ -119,6 +117,7 @@ void slave(int message_size)
  */
 int main(int argc, const char *argv[])
 {
+	int nodes[2];
 	int message_size;
 
 	if (argc != 3)
@@ -127,34 +126,38 @@ int main(int argc, const char *argv[])
 		return (-EINVAL);
 	}
 
-	message_size = __atoi(argv[2]);
+	message_size = atoi(argv[2]);
 
-	build_node_list(1, 1, nodeids);
+	build_node_list(1, 1, nodes);
 
 	/* Filters the clusters involved. */
 	if (cluster_is_io())
 	{
-		if (knode_get_num() != nodeids[0])
+		if (knode_get_num() != nodes[0])
 			return (0);
 	}
 	else
 	{
-		if (knode_get_num() != nodeids[1])
+		if (knode_get_num() != nodes[1])
 			return (0);
 	}
 
 	kprintf(HLINE);
 
-	fence_setup(1, 1);
+	barrier_setup(1, 1);
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			master(message_size);
+			do_master(nodes, message_size);
 		else
-			slave(message_size);
+			do_slave(nodes, message_size);
 
 		kprintf("[portal][pingpong] Successfuly completed.");
 
-	fence_cleanup();
+		barrier();
+
+		kprintf("[portal][pingpong] Exit.");
+
+	barrier_cleanup();
 
 	kprintf(HLINE);
 
