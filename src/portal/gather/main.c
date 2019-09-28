@@ -29,21 +29,19 @@
 
 #define MESSAGE_MSG_MAX (4096)
 
-static int nodeids[PROCESSOR_CLUSTERS_NUM];
-
-void master(int nslaves, int message_size)
+void do_master(int nodes[], int nslaves, int message_size)
 {
 	int local;
 	int portalid;
 	char message[PROCESSOR_CLUSTERS_NUM * MESSAGE_MSG_MAX];
 
-	local = nodeids[0];
+	local = nodes[0];
 
 	kmemset(message, 0, (nslaves * message_size));
 
 	KASSERT((portalid = kportal_create(local)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
@@ -52,7 +50,7 @@ void master(int nslaves, int message_size)
 			/* Reads NSLAVES messages. */
 			for (int j = 1; j <= nslaves; ++j)
 			{
-				KASSERT(kportal_allow(portalid, nodeids[j]) == 0);
+				KASSERT(kportal_allow(portalid, nodes[j]) == 0);
 				KASSERT(
 					kportal_read(
 						portalid,
@@ -65,22 +63,20 @@ void master(int nslaves, int message_size)
 			/* Checks transfer. */
 			for (int j = 1; j <= nslaves; ++j)
 			{
-				char value = nodeids[j];
+				char value = nodes[j];
 				char * curr_message = &message[((j - 1) * message_size)];
-
-				kprintf("I WILL SEE nodeid:%d => %d", (int) value, (int) curr_message[0]);
 
 				for (int k = 0; k < message_size; ++k)
 					KASSERT(curr_message[k] == value);
 			}
 		}
 
-		fence();
+		barrier();
 
 	KASSERT(kportal_unlink(portalid) == 0);
 }
 
-void slave(int message_size)
+void do_slave(int nodes[], int message_size)
 {
 	int local;
 	int remote;
@@ -88,7 +84,7 @@ void slave(int message_size)
 	char message[MESSAGE_MSG_MAX];
 
 	local  = knode_get_num();
-	remote = nodeids[0];
+	remote = nodes[0];
 
 	kmemset(message, (char) local, message_size);
 
@@ -96,12 +92,12 @@ void slave(int message_size)
 
 	KASSERT((portalid = kportal_open(local, remote)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 			KASSERT(kportal_write(portalid, message, message_size) == message_size);
 		
-		fence();
+		barrier();
 
 	KASSERT(kportal_close(portalid) == 0);
 }
@@ -121,6 +117,7 @@ int main(int argc, const char *argv[])
 	int ncclusters;
 	int nioclusters;
 	int message_size;
+	int nodes[PROCESSOR_CLUSTERS_NUM];
 
 	if (argc != 3)
 	{
@@ -128,24 +125,17 @@ int main(int argc, const char *argv[])
 		return (-EINVAL);
 	}
 
-	nioclusters  = __atoi(argv[0]);
-	ncclusters   = __atoi(argv[1]);
-	message_size = __atoi(argv[2]);
+	nioclusters  = atoi(argv[0]);
+	ncclusters   = atoi(argv[1]);
+	message_size = atoi(argv[2]);
 
-	if (ncclusters > 16 || message_size == 0)
+	if (nioclusters == 0 || ncclusters == 0 || ncclusters > 16 || message_size == 0)
 	{
 		kprintf("[portal][gather] Bad arguments! (%d, %d)", ncclusters, message_size);
 		return (-EINVAL);
 	}
 
-	build_node_list(nioclusters, ncclusters, nodeids);
-
-	/* Filters the clusters involved. */
-	if (cluster_is_compute())
-	{
-		if (knode_get_num() >= 8 + ncclusters)
-			return (0);
-	}
+	build_node_list(nioclusters, ncclusters, nodes);
 
 	/* Filters the clusters involved. */
 	if (cluster_is_io())
@@ -161,16 +151,20 @@ int main(int argc, const char *argv[])
 
 	kprintf(HLINE);
 
-	fence_setup(1, ncclusters);
+	barrier_setup(nioclusters, ncclusters);
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			master(((nioclusters - 1) + ncclusters), message_size);
+			do_master(nodes, ((nioclusters - 1) + ncclusters), message_size);
 		else
-			slave(message_size);
+			do_slave(nodes, message_size);
 
 		kprintf("[portal][gather] Successfuly completed.");
 
-	fence_cleanup();
+		barrier();
+
+		kprintf("[portal][gather] Exit.");
+
+	barrier_cleanup();
 
 	kprintf(HLINE);
 
