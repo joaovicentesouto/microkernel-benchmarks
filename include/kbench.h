@@ -54,11 +54,11 @@
 	#define HLINE "--------------------------------------------------------------------------------\n"
 
 	/**
-	 * @brief Generic fence.
+	 * @brief Generic barrier.
 	 */
-	int fence_setup(int nioclusters, int ncclusters);
-	int fence_cleanup(void);
-	int fence(void);
+	int barrier_setup(int nioclusters, int ncclusters);
+	int barrier_cleanup(void);
+	int barrier(void);
 
 	/**
 	 * Build a list of the node ids.
@@ -71,18 +71,34 @@
 	void timer(uint64_t cicles);
 
 /*============================================================================*
+ * Arguments/Returns Functions                                                *
+ *============================================================================*/
+
+	/**
+	 * @brief Auxiliar structs.
+	 */
+	struct initial_arguments;
+	struct final_return;
+
+	/**
+	 * @brief Initia; exchange of arguments (Master to all slaves).
+	 */
+	void send_arguments(struct initial_arguments * args);
+	void receive_arguments(struct initial_arguments * args);
+
+/*============================================================================*
  * Convert Functions                                                          *
  *============================================================================*/
 
 	/**
 	 *  Convert a string to a int.
 	 */
-	int __atoi(const char * str);
+	int atoi(const char * str);
 
 	/**
 	 *  Convert a int to a string.
 	 */
-	char * __itoa(int num, char * str, int base);
+	char * itoa(int num, char * str, int base);
 
 /*============================================================================*
  * Memory Functions                                                           *
