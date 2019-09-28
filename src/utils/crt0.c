@@ -69,7 +69,7 @@ void ___start(int argc, const char *argv[], char **envp)
 	UNUSED(argc);
 	UNUSED(envp);
 
-	fence_setup(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM);
+	barrier_setup(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM);
 	__stdmailbox_setup();
 
 		if (cluster_get_num() != PROCESSOR_CLUSTERNUM_MASTER)
@@ -82,7 +82,7 @@ void ___start(int argc, const char *argv[], char **envp)
 			kprintf("    2. dummy");
 		}
 
-		fence();
+		barrier();
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		{
@@ -90,9 +90,9 @@ void ___start(int argc, const char *argv[], char **envp)
 			int nodenum;
 
 			nodenum = 0;
-			__mailbox_args.nioclusters  = __atoi(argv[1]);
-			__mailbox_args.ncclusters   = __atoi(argv[2]);
-			__mailbox_args.message_size = __atoi(argv[3]);
+			__mailbox_args.nioclusters  = atoi(argv[1]);
+			__mailbox_args.ncclusters   = atoi(argv[2]);
+			__mailbox_args.message_size = atoi(argv[3]);
 
 			for (int i = 0; i < PROCESSOR_IOCLUSTERS_NUM; i++)
 			{
@@ -125,9 +125,9 @@ void ___start(int argc, const char *argv[], char **envp)
 
 			kmailbox_read(inbox, &__mailbox_args, MAILBOX_MSG_SIZE);
 
-			__itoa(__mailbox_args.nioclusters,  default_argv[0], 10);
-			__itoa(__mailbox_args.ncclusters,   default_argv[1], 10);
-			__itoa(__mailbox_args.message_size, default_argv[2], 10);
+			itoa(__mailbox_args.nioclusters,  default_argv[0], 10);
+			itoa(__mailbox_args.ncclusters,   default_argv[1], 10);
+			itoa(__mailbox_args.message_size, default_argv[2], 10);
 
 			_argc    = 3;
 			_argv[0] = default_argv[0];
@@ -135,10 +135,10 @@ void ___start(int argc, const char *argv[], char **envp)
 			_argv[2] = default_argv[2];
 		}
 
-		fence();
+		barrier();
 
 	__stdmailbox_cleanup();
-	fence_cleanup();
+	barrier_cleanup();
 
 	ret = main(_argc, (const char **) _argv);
 
