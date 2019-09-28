@@ -30,9 +30,7 @@
 
 #define MESSAGE_MSG_MAX (4096)
 
-static int nodeids[PROCESSOR_CLUSTERS_NUM];
-
-void master(int nslaves, int message_size)
+void do_master(int nodes[], int nslaves, int message_size)
 {
 	int local;
 	int syncid;
@@ -40,15 +38,12 @@ void master(int nslaves, int message_size)
 	int portalids[4];
 	char message[MESSAGE_MSG_MAX];
 
-	for (int k = 1; k <= nslaves; ++k)
-		kprintf("    == nodes %d", nodeids[k]);
-
-	local = nodeids[0];
-	sync_nodelist[0] = nodeids[0];
+	local = nodes[0];
+	sync_nodelist[0] = nodes[0];
 
 	kmemset(message, 1, message_size);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
@@ -59,8 +54,8 @@ void master(int nslaves, int message_size)
 				/* Opens connectors. */
 				for (int remote = (j + 1); remote <= (j + 4) && remote <= nslaves; ++remote)
 				{
-					KASSERT((portalids[index++] = kportal_open(local, nodeids[remote])) >= 0);
-					sync_nodelist[index] = nodeids[remote];
+					KASSERT((portalids[index++] = kportal_open(local, nodes[remote])) >= 0);
+					sync_nodelist[index] = nodes[remote];
 				}
 
 				KASSERT((syncid = ksync_open(sync_nodelist, ++index, SYNC_ONE_TO_ALL)) >= 0);
@@ -68,15 +63,9 @@ void master(int nslaves, int message_size)
 				/* Releases slaves to read (send permission ack to sender). */
 				KASSERT(ksync_signal(syncid) == 0);
 
-				for (int k = 1; k < index; ++k)
-					kprintf("    ++ Sinc with %d", sync_nodelist[k]);
-
 				/* Sends the message for current slaves. */
 				for (int k = 0; k < (index - 1); ++k)
-				{
-					kprintf("    ++ Send to %d", nodeids[(j + 1) + k]);
 					KASSERT(kportal_write(portalids[k], message, message_size) == message_size);
-				}
 
 				/* Closes connectors. */
 				KASSERT(ksync_close(syncid) == 0);
@@ -86,7 +75,7 @@ void master(int nslaves, int message_size)
 		}
 }
 
-void slave(int message_size)
+void do_slave(int nodes[], int message_size)
 {
 	int local;
 	int remote;
@@ -96,8 +85,8 @@ void slave(int message_size)
 	char message[MESSAGE_MSG_MAX];
 
 	local  = knode_get_num();
-	remote = nodeids[0];
-	sync_nodelist[0] = nodeids[0];
+	remote = nodes[0];
+	sync_nodelist[0] = nodes[0];
 	sync_nodelist[1] = local;
 
 	kmemset(message, 0, message_size);
@@ -105,7 +94,7 @@ void slave(int message_size)
 	KASSERT((syncid = ksync_create(sync_nodelist, 2, SYNC_ONE_TO_ALL)) >= 0);
 	KASSERT((portalid = kportal_create(local)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
@@ -138,6 +127,7 @@ int main(int argc, const char *argv[])
 {
 	int ncclusters;
 	int message_size;
+	int nodes[PROCESSOR_CLUSTERS_NUM];
 
 	if (argc != 3)
 	{
@@ -145,8 +135,8 @@ int main(int argc, const char *argv[])
 		return (-EINVAL);
 	}
 
-	ncclusters   = __atoi(argv[1]);
-	message_size = __atoi(argv[2]);
+	ncclusters   = atoi(argv[1]);
+	message_size = atoi(argv[2]);
 
 	if (ncclusters == 0 || ncclusters > 16 || message_size == 0)
 	{
@@ -154,11 +144,10 @@ int main(int argc, const char *argv[])
 		return (-EINVAL);
 	}
 
-	kprintf("NUMBER OF SLAVES %d", ncclusters);
-
-	nodeids[0] = 4;
+	/* Builds node list. */
+	nodes[0] = 4;
 	for (int i = 0; i < ncclusters; ++i)
-		nodeids[(i + 1)] = 8 + i;
+		nodes[(i + 1)] = 8 + i;
 
 	/* Filters the clusters involved. */
 	if (cluster_is_compute())
@@ -169,25 +158,25 @@ int main(int argc, const char *argv[])
 
 	kprintf(HLINE);
 
-	fence_setup(2, ncclusters);
+	barrier_setup(2, ncclusters);
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			fence();
+			barrier();
 		else 
 		{
-			if (knode_get_num() == nodeids[0])
-				master(ncclusters, message_size);
+			if (knode_get_num() == nodes[0])
+				do_master(nodes, ncclusters, message_size);
 			else
-				slave(message_size);
+				do_slave(nodes, message_size);
 
 			kprintf("[portal][broadcast] Successfuly completed.");
 		}
 
-		fence();
+		barrier();
 
 		kprintf("[portal][broadcast] Exit.");
 
-	fence_cleanup();
+	barrier_cleanup();
 
 	kprintf(HLINE);
 
