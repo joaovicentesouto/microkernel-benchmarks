@@ -27,13 +27,13 @@
 #===============================================================================
 
 # Builds Binary Files
-all: all-pingpong all-broadcast all-sather all-gather
+all: all-pingpong all-broadcast all-sather all-gather all-allgather
 
 # Cleans Object Files
-clean: clean-pingpong clean-broadcast clean-sather clean-gather
+clean: clean-pingpong clean-broadcast clean-sather clean-gather clean-allgather
 
 # Builds Binary Image Files
-images: image-pingpong image-broadcast image-sather image-gather
+images: image-pingpong image-broadcast image-sather image-gather image-allgather
 
 #===============================================================================
 # Ping Pong
@@ -98,3 +98,19 @@ clean-gather:
 # Build Buffer Benchmark Binary Image
 image-gather:
 	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-gather.img $(BINDIR) portal-gather
+
+#===============================================================================
+# All Gather
+#===============================================================================
+
+# Builds args.
+all-allgather:
+	@$(MAKE) -C allgather all
+
+# Cleans object files.
+clean-allgather:
+	@$(MAKE) -C allgather clean
+
+# Build Buffer Benchmark Binary Image
+image-allgather:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/portal-allgather.img $(BINDIR) portal-allgather
