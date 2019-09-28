@@ -25,7 +25,7 @@
 /**
  *  Convert a string to a int.
  */
-int __atoi(const char * str)
+int atoi(const char * str)
 {
 	int result = 0;
 
@@ -57,7 +57,7 @@ static void reverse(char str[], int length)
 /**
  *  Convert a int to a string.
  */
-char * __itoa(int num, char * str, int base)
+char * itoa(int num, char * str, int base)
 {
 	int i = 0;
 	int isNegative = 0;
