@@ -35,7 +35,7 @@ static int __nodes[PROCESSOR_CLUSTERS_NUM];
 /**
  * @todo TODO: provide a detailed description for this function.
  */
-int fence_setup(int nioclusters, int ncclusters)
+int barrier_setup(int nioclusters, int ncclusters)
 {
 	build_node_list(nioclusters, ncclusters, __nodes);
 
@@ -55,7 +55,7 @@ int fence_setup(int nioclusters, int ncclusters)
 /**
  * @todo TODO: provide a detailed description for this function.
  */
-int fence_cleanup(void)
+int barrier_cleanup(void)
 {
 	KASSERT(ksync_unlink(__syncin) == 0);
 
@@ -67,11 +67,11 @@ int fence_cleanup(void)
 /**
  * @todo TODO: provide a detailed description for this function.
  */
-int fence(void)
+int barrier(void)
 {
 	int syncout;
 
-	kprintf("    + fence");
+	kprintf("    + barrier");
 
 	/* Master cluster */
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
@@ -97,7 +97,7 @@ int fence(void)
 
 	KASSERT(ksync_close(syncout) == 0);
 
-	kprintf("    - fence");
+	kprintf("    - barrier");
 
 	return (0);
 }
