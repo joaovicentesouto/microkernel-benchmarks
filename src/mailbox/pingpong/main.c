@@ -43,7 +43,7 @@ void master(void)
 	KASSERT((mbx_in = kmailbox_create(local)) >= 0);
 	KASSERT((mbx_out = kmailbox_open(remote)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
@@ -79,7 +79,7 @@ void slave(void)
 	KASSERT((mbx_in = kmailbox_create(local)) >= 0);
 	KASSERT((mbx_out = kmailbox_open(remote)) >= 0);
 
-		fence();
+		barrier();
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
@@ -132,7 +132,7 @@ int main(int argc, const char *argv[])
 
 	kprintf(HLINE);
 
-	fence_setup(1, 1);
+	barrier_setup(1, 1);
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 			master();
@@ -141,7 +141,7 @@ int main(int argc, const char *argv[])
 
 		kprintf("[mailbox] Ping Pong successfuly completed.");
 
-	fence_cleanup();
+	barrier_cleanup();
 
 	kprintf(HLINE);
 
