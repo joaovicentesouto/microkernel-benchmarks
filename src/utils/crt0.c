@@ -61,16 +61,10 @@ NORETURN  void ___nanvix_exit(int status)
 void ___start(int argc, const char *argv[], char **envp)
 {
 	int ret;
-	int _argc;
-	char *_argv[1];
-	char default_argv[3][100];
-	struct __mailbox_args __mailbox_args;
 
-	UNUSED(argc);
 	UNUSED(envp);
 
 	barrier_setup(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM);
-	__stdmailbox_setup();
 
 		if (cluster_get_num() != PROCESSOR_CLUSTERNUM_MASTER)
 		{
@@ -84,63 +78,9 @@ void ___start(int argc, const char *argv[], char **envp)
 
 		barrier();
 
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		{
-			int outbox;
-			int nodenum;
-
-			nodenum = 0;
-			__mailbox_args.nioclusters  = atoi(argv[1]);
-			__mailbox_args.ncclusters   = atoi(argv[2]);
-			__mailbox_args.message_size = atoi(argv[3]);
-
-			for (int i = 0; i < PROCESSOR_IOCLUSTERS_NUM; i++)
-			{
-				outbox = kmailbox_open(nodenum);
-				kmailbox_write(outbox, &__mailbox_args, MAILBOX_MSG_SIZE);
-				kmailbox_close(outbox);
-
-				nodenum += (PROCESSOR_NOC_IONODES_NUM / PROCESSOR_IOCLUSTERS_NUM);
-			}
-
-			for (int i = PROCESSOR_IOCLUSTERS_NUM; i < (PROCESSOR_IOCLUSTERS_NUM + PROCESSOR_CCLUSTERS_NUM); i++)
-			{
-				outbox = kmailbox_open(nodenum);
-				kmailbox_write(outbox, &__mailbox_args, MAILBOX_MSG_SIZE);
-				kmailbox_close(outbox);
-
-				nodenum += (PROCESSOR_NOC_CNODES_NUM / PROCESSOR_CCLUSTERS_NUM);
-			}
-
-			_argc    = 3;
-			_argv[0] = (char *) argv[1];
-			_argv[1] = (char *) argv[2];
-			_argv[2] = (char *) argv[3];
-		}
-		else
-		{
-			int inbox;
-
-			inbox = stdinbox_get();
-
-			kmailbox_read(inbox, &__mailbox_args, MAILBOX_MSG_SIZE);
-
-			itoa(__mailbox_args.nioclusters,  default_argv[0], 10);
-			itoa(__mailbox_args.ncclusters,   default_argv[1], 10);
-			itoa(__mailbox_args.message_size, default_argv[2], 10);
-
-			_argc    = 3;
-			_argv[0] = default_argv[0];
-			_argv[1] = default_argv[1];
-			_argv[2] = default_argv[2];
-		}
-
-		barrier();
-
-	__stdmailbox_cleanup();
 	barrier_cleanup();
 
-	ret = main(_argc, (const char **) _argv);
+	ret = main(argc, argv);
 
 	/* Power off. */
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
