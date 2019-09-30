@@ -22,20 +22,20 @@
  * SOFTWARE.
  */
 
-#include <nanvix/sys/portal.h>
-#include <nanvix/sys/noc.h>
 #include <stdint.h>
 #include <kbench.h>
 
 #define MESSAGE_MSG_MAX (4096)
 
+static struct final_results results;
+static char message[MESSAGE_MSG_MAX];
+
 void do_master(int nodes[], int message_size)
 {
 	int local;
-	indo_t remote;
+	int remote;
 	int portal_in;
 	int portal_out;
-	char message[MESSAGE_MSG_MAX];
 
 	local  = nodes[0];
 	remote = nodes[1];
@@ -67,13 +67,12 @@ void do_master(int nodes[], int message_size)
 	KASSERT(kportal_unlink(portal_in) == 0);
 }
 
-void slave(int nodes[], int message_size)
+void do_slave(int nodes[], int message_size)
 {
 	int local;
 	int remote;
 	int portal_in;
 	int portal_out;
-	char message[MESSAGE_MSG_MAX];
 
 	local  = nodes[1];
 	remote = nodes[0];
@@ -101,8 +100,12 @@ void slave(int nodes[], int message_size)
 				KASSERT(message[j] == 1);
 		}
 
+		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+
 	KASSERT(kportal_close(portal_out) == 0);
 	KASSERT(kportal_unlink(portal_in) == 0);
+
 }
 
 /*============================================================================*
@@ -118,15 +121,9 @@ void slave(int nodes[], int message_size)
 int main(int argc, const char *argv[])
 {
 	int nodes[2];
-	int message_size;
+	struct initial_arguments _args;
 
-	if (argc != 3)
-	{
-		kprintf("[portal][pingpong] Invalid arguments! (%d)", argc);
-		return (-EINVAL);
-	}
-
-	message_size = atoi(argv[2]);
+	exchange_arguments(argc, argv, &_args);
 
 	build_node_list(1, 1, nodes);
 
@@ -142,24 +139,45 @@ int main(int argc, const char *argv[])
 			return (0);
 	}
 
-	kprintf(HLINE);
-
 	barrier_setup(1, 1);
 
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			do_master(nodes, message_size);
-		else
-			do_slave(nodes, message_size);
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf(HLINE);
 
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+			do_master(nodes, _args.message_size);
+		else
+			do_slave(nodes, _args.message_size);
+
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[portal][pingpong] Successfuly completed.");
 
 		barrier();
 
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		{
+			uint64_t l0 = results.latency;
+			uint64_t v0 = results.volume;
+			
+			receive_results(1, &results);
+
+			results.latency = results.latency < l0 ? l0 : results.latency;
+			results.volume  = results.volume < v0  ? v0 : results.volume;
+
+			print_results(2, NITERATIONS, &results);
+		}
+		else
+			send_results(&results);
+
+		barrier();
+
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[portal][pingpong] Exit.");
 
 	barrier_cleanup();
 
-	kprintf(HLINE);
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf(HLINE);
 
 	return (0);
 }
