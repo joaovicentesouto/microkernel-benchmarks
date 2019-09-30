@@ -22,45 +22,118 @@
  * SOFTWARE.
  */
 
-#include <nanvix/sys/dev.h>
-#include <nanvix/sys/mailbox.h>
 #include <stddef.h>
 #include <kbench.h>
 
-struct initial_arguments
+static void send_arguments(int argc, const char *argv[], struct initial_arguments * _args)
 {
-	int ncclusters;
-	int nioclusters;
-	int message_size;
-	char unused[(MAILBOX_MSG_SIZE - (3 * sizeof(int)))];
-};
+	int outbox;
+	int nodes[PROCESSOR_CLUSTERS_NUM];
 
-void send_arguments(struct initial_arguments * args)
-{
-    int outbox;
-    int nodenum;
-    int nodes[PROCESSOR_CLUSTERS_NUM];
+	barrier_setup(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM);
 
-    build_node_list(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM, nodes);
+	/* Args => (program, nioclusters, ncclusters, message_size). */
+	KASSERT(argc == 4 && argv != NULL);
 
-    for (int i = 0; i < PROCESSOR_CLUSTERS_NUM; ++i)
-    {
-        KASSERT((outbox = kmailbox_open(nodes[i])) >= 0);
-            KASSERT(kmailbox_write(outbox, args, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
-        KASSERT(kmailbox_close(outbox) == 0);
-    }
+	_args->nioclusters  = atoi(argv[1]);
+	_args->ncclusters   = atoi(argv[2]);
+	_args->message_size = atoi(argv[3]);
+
+	dcache_invalidate();
+
+	build_node_list(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM, nodes);
+
+		barrier();
+
+		timer(CLUSTER_FREQ);
+
+		for (int i = 1; i < PROCESSOR_CLUSTERS_NUM; ++i)
+		{
+			KASSERT((outbox = kmailbox_open(nodes[i])) >= 0);
+				KASSERT(kmailbox_write(outbox, _args, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+			KASSERT(kmailbox_close(outbox) == 0);
+		}
+
+		barrier();
+
+	barrier_cleanup();
 }
 
-void receive_arguments(struct initial_arguments * args)
+static void receive_arguments(struct initial_arguments * _args)
 {
-    int inbox;
+	int inbox;
 
-    __stdmailbox_setup();
+	barrier_setup(PROCESSOR_IOCLUSTERS_NUM, PROCESSOR_CCLUSTERS_NUM);
+	__stdmailbox_setup();
 
-        timer(CLUSTER_FREQ);
+		barrier();
 
-        KASSERT((inbox = stdinbox_get()) >= 0);
-        KASSERT(kmailbox_read(inbox, &args, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+		KASSERT((inbox = stdinbox_get()) >= 0);
+		KASSERT(kmailbox_read(inbox, _args, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
 
-    __stdmailbox_cleanup();
+		barrier();
+
+	__stdmailbox_cleanup();
+	barrier_cleanup();
+}
+
+void exchange_arguments(int argc, const char *argv[], struct initial_arguments * _args)
+{
+	KASSERT(_args != NULL);
+
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		send_arguments(argc, argv, _args);
+	else
+		receive_arguments(_args);
+}
+
+void send_results(struct final_results * results)
+{
+	int outbox;
+
+	/* Needs to be a slave. */
+	KASSERT((cluster_get_num() != PROCESSOR_CLUSTERNUM_MASTER));
+
+	barrier();
+
+	KASSERT((outbox = kmailbox_open(PROCESSOR_NODENUM_MASTER)) >= 0);
+		KASSERT(kmailbox_write(outbox, results, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+	KASSERT(kmailbox_close(outbox) == 0);
+}
+
+void receive_results(int nslaves, struct final_results * results)
+{
+	int inbox;
+	uint64_t worst_volume;
+	uint64_t worst_latency;
+
+	/* Needs to be the master. */
+	KASSERT((cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER));
+
+	worst_volume  = 0ULL;
+	worst_latency = 0ULL;
+
+	__stdmailbox_setup();
+
+		barrier();
+
+		KASSERT((inbox = stdinbox_get()) >= 0);
+
+		timer(CLUSTER_FREQ);
+
+		for (int i = 0; i < nslaves; ++i)
+		{
+			KASSERT(kmailbox_read(inbox, results, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+
+			if (worst_volume < results->volume)
+				worst_volume = results->volume;
+
+			if (worst_latency < results->latency)
+				worst_latency = results->latency;			
+		}
+
+	__stdmailbox_cleanup();
+
+	results->volume  = worst_volume;
+	results->latency = worst_latency;
 }
