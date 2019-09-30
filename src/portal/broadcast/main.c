@@ -22,21 +22,20 @@
  * SOFTWARE.
  */
 
-#include <nanvix/sys/portal.h>
-#include <nanvix/sys/sync.h>
-#include <nanvix/sys/noc.h>
 #include <stdint.h>
 #include <kbench.h>
 
 #define MESSAGE_MSG_MAX (4096)
+
+static struct final_results results;
+static char message[MESSAGE_MSG_MAX];
 
 void do_master(int nodes[], int nslaves, int message_size)
 {
 	int local;
 	int syncid;
 	int sync_nodelist[5];
-	int portalids[4];
-	char message[MESSAGE_MSG_MAX];
+	int portals_out[4];
 
 	local = nodes[0];
 	sync_nodelist[0] = nodes[0];
@@ -54,7 +53,7 @@ void do_master(int nodes[], int nslaves, int message_size)
 				/* Opens connectors. */
 				for (int remote = (j + 1); remote <= (j + 4) && remote <= nslaves; ++remote)
 				{
-					KASSERT((portalids[index++] = kportal_open(local, nodes[remote])) >= 0);
+					KASSERT((portals_out[index++] = kportal_open(local, nodes[remote])) >= 0);
 					sync_nodelist[index] = nodes[remote];
 				}
 
@@ -65,12 +64,12 @@ void do_master(int nodes[], int nslaves, int message_size)
 
 				/* Sends the message for current slaves. */
 				for (int k = 0; k < (index - 1); ++k)
-					KASSERT(kportal_write(portalids[k], message, message_size) == message_size);
+					KASSERT(kportal_write(portals_out[k], message, message_size) == message_size);
 
 				/* Closes connectors. */
 				KASSERT(ksync_close(syncid) == 0);
 				for (int k = 0; k < (index - 1); ++k)
-					KASSERT(kportal_close(portalids[k]) == 0);
+					KASSERT(kportal_close(portals_out[k]) == 0);
 			}
 		}
 }
@@ -81,8 +80,7 @@ void do_slave(int nodes[], int message_size)
 	int remote;
 	int syncid;
 	int sync_nodelist[2];
-	int portalid;
-	char message[MESSAGE_MSG_MAX];
+	int portal_in;
 
 	local  = knode_get_num();
 	remote = nodes[0];
@@ -92,7 +90,7 @@ void do_slave(int nodes[], int message_size)
 	kmemset(message, 0, message_size);
 
 	KASSERT((syncid = ksync_create(sync_nodelist, 2, SYNC_ONE_TO_ALL)) >= 0);
-	KASSERT((portalid = kportal_create(local)) >= 0);
+	KASSERT((portal_in = kportal_create(local)) >= 0);
 
 		barrier();
 
@@ -102,14 +100,17 @@ void do_slave(int nodes[], int message_size)
 
 			KASSERT(ksync_wait(syncid) == 0);
 
-			KASSERT(kportal_allow(portalid, remote) == 0);
-			KASSERT(kportal_read(portalid, message, message_size) == message_size);
+			KASSERT(kportal_allow(portal_in, remote) == 0);
+			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
 
 			for (int j = 0; j < message_size; ++j)
 				KASSERT(message[j] == 1);
 		}
 
-	KASSERT(kportal_unlink(portalid) == 0);
+		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+
+	KASSERT(kportal_unlink(portal_in) == 0);
 	KASSERT(ksync_unlink(syncid) == 0);
 }
 
@@ -125,60 +126,72 @@ void do_slave(int nodes[], int message_size)
  */
 int main(int argc, const char *argv[])
 {
-	int ncclusters;
-	int message_size;
+	struct initial_arguments _args;
 	int nodes[PROCESSOR_CLUSTERS_NUM];
 
-	if (argc != 3)
-	{
-		kprintf("[portal][broadcast] Invalid arguments! (%d)", argc);
-		return (-EINVAL);
-	}
-
-	ncclusters   = atoi(argv[1]);
-	message_size = atoi(argv[2]);
-
-	if (ncclusters == 0 || ncclusters > 16 || message_size == 0)
-	{
-		kprintf("[portal][broadcast] Bad arguments! (%d, %d)", ncclusters, message_size);
-		return (-EINVAL);
-	}
+	exchange_arguments(argc, argv, &_args);
 
 	/* Builds node list. */
 	nodes[0] = 4;
-	for (int i = 0; i < ncclusters; ++i)
+	for (int i = 0; i < _args.ncclusters; ++i)
 		nodes[(i + 1)] = 8 + i;
 
 	/* Filters the clusters involved. */
 	if (cluster_is_compute())
 	{
-		if (knode_get_num() >= 8 + ncclusters)
+		if (knode_get_num() >= 8 + _args.ncclusters)
 			return (0);
 	}
 
-	kprintf(HLINE);
+	barrier_setup(2, _args.ncclusters);
 
-	barrier_setup(2, ncclusters);
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf(HLINE);
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 			barrier();
 		else 
 		{
 			if (knode_get_num() == nodes[0])
-				do_master(nodes, ncclusters, message_size);
+				do_master(nodes, _args.ncclusters, _args.message_size);
 			else
-				do_slave(nodes, message_size);
-
-			kprintf("[portal][broadcast] Successfuly completed.");
+				do_slave(nodes, _args.message_size);
 		}
 
 		barrier();
 
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf("[portal][broadcast] Successfuly completed.");
+
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		{
+			receive_results(_args.ncclusters, &results);
+
+			kprintf(
+				"portal;broadcast;%l;%l;%l;%l",
+				(_args.ncclusters),
+				NITERATIONS,
+				results.latency,
+				results.volume
+			);
+
+			print_results(_args.ncclusters, NITERATIONS, &results);
+		}
+		else
+		{
+			results.latency = knode_get_num();
+			send_results(&results);
+		}
+
+		barrier();
+
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[portal][broadcast] Exit.");
 
 	barrier_cleanup();
 
-	kprintf(HLINE);
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf(HLINE);
 
 	return (0);
 }
