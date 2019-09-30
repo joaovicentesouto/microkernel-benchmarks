@@ -71,8 +71,6 @@ int barrier(void)
 {
 	int syncout;
 
-	kprintf("    + barrier");
-
 	/* Master cluster */
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 	{
@@ -80,7 +78,6 @@ int barrier(void)
 
 		KASSERT(ksync_wait(__syncin) == 0);
 		KASSERT(ksync_signal(syncout) == 0);
-
 	}
 
 	/* Slave cluster */
@@ -88,7 +85,7 @@ int barrier(void)
 	{
 		KASSERT((syncout = ksync_open(__nodes, __nnodes, SYNC_ALL_TO_ONE)) >= 0);
 
-		/* Waits half second. */
+		/* Waits one second. */
 		timer(CLUSTER_FREQ);
 
 		KASSERT(ksync_signal(syncout) == 0);
@@ -96,8 +93,6 @@ int barrier(void)
 	}
 
 	KASSERT(ksync_close(syncout) == 0);
-
-	kprintf("    - barrier");
 
 	return (0);
 }
