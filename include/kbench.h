@@ -27,15 +27,19 @@
 
 	#include <nanvix/runtime/stdikc.h>
 	#include <nanvix/sys/dev.h>
+	#include <nanvix/sys/noc.h>
+	#include <nanvix/sys/sync.h>
+	#include <nanvix/sys/mailbox.h>
+	#include <nanvix/sys/portal.h>
 	#include <stdint.h>
 
 	/**
 	 * @brief Number of benchmark iterations.
 	 */
 	#ifdef NDEBUG
-		#define NITERATIONS 1
+		#define NITERATIONS 5
 	#else
-		#define NITERATIONS 1
+		#define NITERATIONS 5
 	#endif
 
 	/**
@@ -77,14 +81,34 @@
 	/**
 	 * @brief Auxiliar structs.
 	 */
-	struct initial_arguments;
-	struct final_return;
+	struct initial_arguments
+	{
+		int ncclusters;
+		int nioclusters;
+		int message_size;
+
+		char unused[(MAILBOX_MSG_SIZE - (3 * sizeof(int)))];
+	};
+
+	struct final_results
+	{
+		uint64_t volume;
+		uint64_t latency;
+
+		char unused[(MAILBOX_MSG_SIZE - (2 * sizeof(uint64_t)))];
+	};
 
 	/**
-	 * @brief Initia; exchange of arguments (Master to all slaves).
+	 * @brief Initial exchange of arguments (Master to all slaves).
 	 */
-	void send_arguments(struct initial_arguments * args);
-	void receive_arguments(struct initial_arguments * args);
+	void exchange_arguments(int argc, const char *argv[], struct initial_arguments * args);
+
+	/**
+	 * @brief Final results exchange.
+	 */
+	void send_results(struct final_results * results);
+	void receive_results(int nslaves, struct final_results * results);
+	void print_results(int nclusters, int iterations, struct final_results * results);
 
 /*============================================================================*
  * Convert Functions                                                          *
