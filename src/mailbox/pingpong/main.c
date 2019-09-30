@@ -22,26 +22,25 @@
  * SOFTWARE.
  */
 
-#include <nanvix/sys/mailbox.h>
-#include <nanvix/sys/noc.h>
 #include <stdint.h>
 #include <kbench.h>
 
 static int nodeids[2];
+struct final_results results;
 
-void master(void)
+void do_master(void)
 {
 	int local;
 	int remote;
-	int mbx_in;
-	int mbx_out;
+	int inbox;
+	int outbox;
 	char message[MAILBOX_MSG_SIZE];
 
 	local  = nodeids[0];
 	remote = nodeids[1];
 
-	KASSERT((mbx_in = kmailbox_create(local)) >= 0);
-	KASSERT((mbx_out = kmailbox_open(remote)) >= 0);
+	KASSERT((inbox = kmailbox_create(local)) >= 0);
+	KASSERT((outbox = kmailbox_open(remote)) >= 0);
 
 		barrier();
 
@@ -49,35 +48,35 @@ void master(void)
 		{
 			kmemset(message, 1, MAILBOX_MSG_SIZE);
 
-			KASSERT(kmailbox_awrite(mbx_out, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
-			KASSERT(kmailbox_wait(mbx_out) == 0);
+			KASSERT(kmailbox_awrite(outbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+			KASSERT(kmailbox_wait(outbox) == 0);
 
 			kmemset(message, 0, MAILBOX_MSG_SIZE);
 
-			KASSERT(kmailbox_aread(mbx_in, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
-			KASSERT(kmailbox_wait(mbx_in) == 0);
+			KASSERT(kmailbox_aread(inbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+			KASSERT(kmailbox_wait(inbox) == 0);
 
 			for (unsigned j = 0; j < MAILBOX_MSG_SIZE; ++j)
 				KASSERT(message[j] == 2);
 		}
 
-	KASSERT(kmailbox_close(mbx_out) == 0);
-	KASSERT(kmailbox_unlink(mbx_in) == 0);
+	KASSERT(kmailbox_close(outbox) == 0);
+	KASSERT(kmailbox_unlink(inbox) == 0);
 }
 
-void slave(void)
+void do_slave(void)
 {
 	int local;
 	int remote;
-	int mbx_in;
-	int mbx_out;
+	int inbox;
+	int outbox;
 	char message[MAILBOX_MSG_SIZE];
 
 	local  = nodeids[1];
 	remote = nodeids[0];
 
-	KASSERT((mbx_in = kmailbox_create(local)) >= 0);
-	KASSERT((mbx_out = kmailbox_open(remote)) >= 0);
+	KASSERT((inbox = kmailbox_create(local)) >= 0);
+	KASSERT((outbox = kmailbox_open(remote)) >= 0);
 
 		barrier();
 
@@ -85,20 +84,23 @@ void slave(void)
 		{
 			kmemset(message, 0, MAILBOX_MSG_SIZE);
 
-			KASSERT(kmailbox_aread(mbx_in, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
-			KASSERT(kmailbox_wait(mbx_in) == 0);
+			KASSERT(kmailbox_aread(inbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+			KASSERT(kmailbox_wait(inbox) == 0);
 
 			for (unsigned j = 0; j < MAILBOX_MSG_SIZE; ++j)
 				KASSERT(message[j] == 1);
 
 			kmemset(message, 2, MAILBOX_MSG_SIZE);
 
-			KASSERT(kmailbox_awrite(mbx_out, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
-			KASSERT(kmailbox_wait(mbx_out) == 0);
+			KASSERT(kmailbox_awrite(outbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+			KASSERT(kmailbox_wait(outbox) == 0);
 		}
 
-	KASSERT(kmailbox_close(mbx_out) == 0);
-	KASSERT(kmailbox_unlink(mbx_in) == 0);
+		KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_LATENCY, &results.latency) == 0);
+		KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_VOLUME, &results.volume) == 0);
+
+	KASSERT(kmailbox_close(outbox) == 0);
+	KASSERT(kmailbox_unlink(inbox) == 0);
 }
 
 /*============================================================================*
@@ -113,8 +115,9 @@ void slave(void)
  */
 int main(int argc, const char *argv[])
 {
-	UNUSED(argc);
-	UNUSED(argv);
+	struct initial_arguments _args;
+
+	exchange_arguments(argc, argv, &_args);
 
 	build_node_list(1, 1, nodeids);
 
@@ -130,20 +133,45 @@ int main(int argc, const char *argv[])
 			return (0);
 	}
 
-	kprintf(HLINE);
-
 	barrier_setup(1, 1);
 
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			master();
-		else
-			slave();
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf(HLINE);
 
-		kprintf("[mailbox] Ping Pong successfuly completed.");
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+			do_master();
+		else
+			do_slave();
+
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf("[mailbox][pingpong] successfuly completed.");
+
+		barrier();
+
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		{
+			uint64_t l0 = results.latency;
+			uint64_t v0 = results.volume;
+
+			receive_results(1, &results);
+
+			results.latency = results.latency < l0 ? l0 : results.latency;
+			results.volume  = results.volume < v0  ? v0 : results.volume;
+
+			print_results(2, NITERATIONS, &results);
+		}
+		else
+			send_results(&results);
+
+		barrier();
+
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf("[mailbox][pingpong] Exit.");
 
 	barrier_cleanup();
 
-	kprintf(HLINE);
+	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		kprintf(HLINE);
 
 	return (0);
 }
