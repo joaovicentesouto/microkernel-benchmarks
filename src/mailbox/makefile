@@ -27,13 +27,13 @@
 #===============================================================================
 
 # Builds Binary Files
-all: all-pingpong all-broadcast all-allgather
+all: all-pingpong all-broadcast all-gather all-allgather
 
 # Cleans Object Files
-clean: clean-pingpong clean-broadcast clean-allgather
+clean: clean-pingpong clean-broadcast clean-gather clean-allgather
 
 # Builds Binary Image Files
-images: image-pingpong image-broadcast image-allgather
+images: image-pingpong image-broadcast image-gather image-allgather
 
 #===============================================================================
 # mailbox-pingpong
@@ -66,6 +66,24 @@ clean-broadcast:
 # Build Buffer Benchmark Binary Image
 image-broadcast:
 	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/mailbox-broadcast.img $(BINDIR) mailbox-broadcast
+
+
+#===============================================================================
+# mailbox-gather
+#===============================================================================
+
+# Builds args.
+all-gather:
+	@$(MAKE) -C gather all
+
+# Cleans object files.
+clean-gather:
+	@$(MAKE) -C gather clean
+
+# Build Buffer Benchmark Binary Image
+image-gather:
+	bash $(TOOLSDIR)/nanvix-build-image.sh $(IMGDIR)/mailbox-gather.img $(BINDIR) mailbox-gather
+
 
 #===============================================================================
 # mailbox-allgather
