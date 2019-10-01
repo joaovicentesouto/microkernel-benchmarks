@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <kbench.h>
 
-#define MESSAGE_MSG_MAX (1024)
+#define MESSAGE_MSG_MAX (64 * KB)
 
 static struct final_results results;
 static char message[PROCESSOR_CLUSTERS_NUM * MESSAGE_MSG_MAX];
