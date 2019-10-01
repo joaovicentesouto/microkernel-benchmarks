@@ -154,13 +154,7 @@ int main(int argc, const char *argv[])
 		barrier();
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		{
-			receive_results(((_args.nioclusters - 1) + _args.ncclusters), &results);
-
 			print_results(((_args.nioclusters - 1) + _args.ncclusters), NITERATIONS, &results);
-		}
-		else
-			send_results(&results);
 
 		barrier();
 
