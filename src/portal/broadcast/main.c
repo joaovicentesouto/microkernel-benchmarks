@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <kbench.h>
 
-#define MESSAGE_MSG_MAX (4096)
+#define MESSAGE_MSG_MAX (64 * KB)
 
 static struct final_results results;
 static char message[MESSAGE_MSG_MAX];
