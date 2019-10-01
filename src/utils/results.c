@@ -80,7 +80,7 @@ void print_results(int nclusters, int iterations, struct final_results * results
 {
 	kprintf("header;allgather;clusters;iterations;latency;volume");
 	kprintf(
-		"portal;allgather;%l;%l;%l;%l",
+		"portal;allgather;%d;%d;%ld;%ld",
 		nclusters,
 		iterations,
 		results->latency,
