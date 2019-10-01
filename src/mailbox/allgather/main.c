@@ -28,14 +28,15 @@
 static struct final_results results;
 static char message[MAILBOX_MSG_SIZE];
 
-uint64_t build_footprint(int nodes[], int nnodes, int local)
+int build_footprint(int nodes[], int nnodes, int local)
 {
-	uint64_t footprint = 0ULL;
+	int footprint = 0;
 
 	for (int i = 0; i < nnodes; ++i)
-		footprint |= (1ULL << nodes[i]);
+		if (nodes[i] != local)
+			footprint |= (1ULL << nodes[i]);
 
-	return (footprint & (~(1ULL << local)));
+	return (footprint);
 }
 
 void do_work(int nodes[], int nnodes, int index)
@@ -44,7 +45,7 @@ void do_work(int nodes[], int nnodes, int index)
 	int inbox;
 	int outbox;
 	int target;
-	uint64_t expected, received;
+	int expected, received;
 
 	local = nodes[index];
 	expected = build_footprint(nodes, nnodes, local);
@@ -56,9 +57,10 @@ void do_work(int nodes[], int nnodes, int index)
 			kmemset(message, (char) (local), MAILBOX_MSG_SIZE);
 
 			/* Sends n-1 messages. */
-			target = index;
+			target = (index + 1) % nnodes;
 			for (int j = 0; j < (nnodes - 1); ++j)
 			{
+				// kprintf("  -- Opening %d", nodes[target]);
 				KASSERT((outbox = kmailbox_open(nodes[target])) >= 0);
 					KASSERT(kmailbox_write(outbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
 				KASSERT(kmailbox_close(outbox) == 0);
@@ -72,6 +74,9 @@ void do_work(int nodes[], int nnodes, int index)
 			{
 				kmemset(message, (char) (-1), MAILBOX_MSG_SIZE);
 				KASSERT(kmailbox_read(inbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
+
+				kprintf("Ignore this.");
+				
 				received |= (1ULL << message[0]);
 			}
 
