@@ -43,11 +43,13 @@ int barrier_setup(int nioclusters, int ncclusters)
 
 	/* Master cluster */
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+	{
 		KASSERT((__syncin  = ksync_create(__nodes, __nnodes, SYNC_ALL_TO_ONE)) >= 0);
-
-	/* Slave cluster. */
+	}
 	else
+	{
 		KASSERT((__syncin  = ksync_create(__nodes, __nnodes, SYNC_ONE_TO_ALL)) >= 0);
+	}
 
 	return (0);
 }
