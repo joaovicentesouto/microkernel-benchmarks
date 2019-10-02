@@ -47,6 +47,9 @@ void do_work(int nodes[], int nnodes, int index, int message_size)
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
+			if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+				kprintf("Iteration %d/%d", i, NITERATIONS);
+
 			/* Cleans the buffer. */
 			kmemset(message, (-1), nnodes * message_size);
 
@@ -167,7 +170,13 @@ int main(int argc, const char *argv[])
 			results.latency = results.latency < l0 ? l0 : results.latency;
 			results.volume  = results.volume < v0  ? v0 : results.volume;
 
-			print_results((_args.nioclusters + _args.ncclusters), NITERATIONS, &results);
+			print_results(
+				"portal",
+				"allgather",
+				(_args.nioclusters + _args.ncclusters),
+				NITERATIONS,
+				&results
+			);
 		}
 		else
 			send_results(&results);

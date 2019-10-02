@@ -76,11 +76,19 @@ void receive_results(int nslaves, struct final_results * results)
 	results->latency = worst_latency;
 }
 
-void print_results(int nclusters, int iterations, struct final_results * results)
+void print_results(
+	char * abstraction,
+	char * kernel,
+	int nclusters,
+	int iterations,
+	struct final_results * results
+)
 {
-	kprintf("header;allgather;clusters;iterations;latency;volume");
+	kprintf("header;%s;clusters;iterations;latency;volume", kernel);
 	kprintf(
-		"portal;allgather;%d;%d;%ld;%ld",
+		"%s;%s;%d;%d;%ld;%ld",
+		abstraction,
+		kernel,
 		nclusters,
 		iterations,
 		results->latency,

@@ -41,6 +41,8 @@ void do_master(int nodes[], int nslaves)
 
 	for (unsigned i = 0; i < NITERATIONS; ++i)
 	{
+		kprintf("Iteration %d/%d", i, NITERATIONS);
+
 		for (int j = 0; j < nslaves; j += 4)
 		{
 			int index = 0;
@@ -140,7 +142,13 @@ int main(int argc, const char *argv[])
 		{
 			receive_results(((_args.nioclusters - 1) + _args.ncclusters), &results);
 
-			print_results(((_args.nioclusters - 1) + _args.ncclusters), NITERATIONS, &results);
+			print_results(
+				"mailbox",
+				"broadcast",
+				((_args.nioclusters - 1) + _args.ncclusters),
+				NITERATIONS,
+				&results
+			);
 		}
 		else
 			send_results(&results);

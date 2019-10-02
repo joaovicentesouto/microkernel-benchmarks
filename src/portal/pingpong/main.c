@@ -49,6 +49,8 @@ void do_master(int nodes[], int message_size)
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
+			kprintf("Iteration %d/%d", i, NITERATIONS);
+
 			kmemset(message, 0, message_size);
 
 			KASSERT(kportal_allow(portal_in, remote) == 0);
@@ -164,7 +166,7 @@ int main(int argc, const char *argv[])
 			results.latency = results.latency < l0 ? l0 : results.latency;
 			results.volume  = results.volume < v0  ? v0 : results.volume;
 
-			print_results(2, NITERATIONS, &results);
+			print_results("portal", "pingpong", 2, NITERATIONS, &results);
 		}
 		else
 			send_results(&results);

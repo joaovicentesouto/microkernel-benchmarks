@@ -47,6 +47,8 @@ void do_master(int nodes[], int nslaves, int message_size)
 
 	for (unsigned i = 0; i < NITERATIONS; ++i)
 	{
+		kprintf("Iteration %d/%d", i, NITERATIONS);
+
 		for (int j = 0; j < nslaves; j += 4)
 		{
 			int index = 0;
@@ -180,7 +182,7 @@ int main(int argc, const char *argv[])
 		{
 			receive_results(_args.ncclusters, &results);
 
-			print_results(_args.ncclusters, NITERATIONS, &results);
+			print_results("portal", "sather" ,_args.ncclusters, NITERATIONS, &results);
 		}
 		else if (knode_get_num() == nodes[0])
 			barrier();

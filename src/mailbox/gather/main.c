@@ -54,6 +54,8 @@ void do_master(int nodes[], int nslaves)
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
+			kprintf("Iteration %d/%d", i, NITERATIONS);
+
 			received = 0;
 
 			/* Reads NSLAVES messages. */
@@ -147,7 +149,13 @@ int main(int argc, const char *argv[])
 		barrier();
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			print_results(((_args.nioclusters - 1) + _args.ncclusters), NITERATIONS, &results);
+			print_results(
+				"mailbox",
+				"gather",
+				((_args.nioclusters - 1) + _args.ncclusters),
+				NITERATIONS,
+				&results
+			);
 
 		barrier();
 

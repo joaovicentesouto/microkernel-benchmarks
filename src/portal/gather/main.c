@@ -50,6 +50,8 @@ void do_master(int nodes[], int nslaves, int message_size)
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
+			kprintf("Iteration %d/%d", i, NITERATIONS);
+
 			kmemset(message, 0, message_size);
 
 			/* Reads NSLAVES messages. */
@@ -154,7 +156,13 @@ int main(int argc, const char *argv[])
 		barrier();
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			print_results(((_args.nioclusters - 1) + _args.ncclusters), NITERATIONS, &results);
+			print_results(
+				"portal",
+				"gather",
+				((_args.nioclusters - 1) + _args.ncclusters),
+				NITERATIONS,
+				&results
+			);
 
 		barrier();
 

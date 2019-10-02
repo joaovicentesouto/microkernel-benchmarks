@@ -46,6 +46,8 @@ void do_master(void)
 
 		for (unsigned i = 0; i < NITERATIONS; i++)
 		{
+			kprintf("Iteration %d/%d", i, NITERATIONS);
+
 			kmemset(message, 1, MAILBOX_MSG_SIZE);
 
 			KASSERT(kmailbox_awrite(outbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
@@ -158,7 +160,7 @@ int main(int argc, const char *argv[])
 			results.latency = results.latency < l0 ? l0 : results.latency;
 			results.volume  = results.volume < v0  ? v0 : results.volume;
 
-			print_results(2, NITERATIONS, &results);
+			print_results("mailbox", "pingpong", 2, NITERATIONS, &results);
 		}
 		else
 			send_results(&results);

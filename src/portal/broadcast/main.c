@@ -46,6 +46,8 @@ void do_master(int nodes[], int nslaves, int message_size)
 
 		for (unsigned i = 0; i < NITERATIONS; ++i)
 		{
+			kprintf("Iteration %d/%d", i, NITERATIONS);
+
 			for (int j = 0; j < nslaves; j += 4)
 			{
 				int index = 0;
@@ -166,22 +168,10 @@ int main(int argc, const char *argv[])
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		{
 			receive_results(_args.ncclusters, &results);
-
-			kprintf(
-				"portal;broadcast;%l;%l;%l;%l",
-				(_args.ncclusters),
-				NITERATIONS,
-				results.latency,
-				results.volume
-			);
-
-			print_results(_args.ncclusters, NITERATIONS, &results);
+			print_results("portal", "broadcast", _args.ncclusters, NITERATIONS, &results);
 		}
 		else
-		{
-			results.latency = knode_get_num();
 			send_results(&results);
-		}
 
 		barrier();
 

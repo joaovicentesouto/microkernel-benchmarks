@@ -37,7 +37,7 @@
 	 * @brief Number of benchmark iterations.
 	 */
 	#ifdef NDEBUG
-		#define NITERATIONS 30
+		#define NITERATIONS 50
 	#else
 		#define NITERATIONS 1
 	#endif
@@ -108,7 +108,13 @@
 	 */
 	void send_results(struct final_results * results);
 	void receive_results(int nslaves, struct final_results * results);
-	void print_results(int nclusters, int iterations, struct final_results * results);
+	void print_results(
+		char * abstraction,
+		char * kernel,
+		int nclusters,
+		int iterations,
+		struct final_results * results
+	);
 
 /*============================================================================*
  * Convert Functions                                                          *
