@@ -22,7 +22,11 @@
 # SOFTWARE.
 #
 
-output=$1
+RAW_FOLDER=raw
+LOG_FOLDER=log
+
+mkdir $RAW_FOLDER
+mkdir $LOG_FOLDER
 
 # Default configuration
 export TARGET=mppa256
@@ -38,35 +42,47 @@ make contrib && make all
 ## Runs Ping pong
 for size in ${sizes}
 do
-	make KERNEL=portal-pingpong ARGS="\"1 1 $size\"" run > $output
+	echo "Saving $RAW_FOLDER/portal-pingpong.csv (size: $size)"
+	make KERNEL=portal-pingpong ARGS="\"1 1 $size\"" run \
+	| tee                                                \
+		>(cat >> $LOG_FOLDER/portal-pingpong.log)        \
+		>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-pingpong.raw)
 done
 
-for bench in allgather broadcast gather sather
+for kernel in allgather broadcast gather sather
 do
-	for niocluster in 1 2
+	for nioclusters in 1 2
 	do
-		for nccluster in {1..16}
+		for ncclusters in {1..16}
 		do
 			for size in ${sizes}
 			do
-				make KERNEL=portal-$bench ARGS="\"$niocluster $nccluster $size\"" run | grep -E "portal;" >> $output
+				echo "Saving $output/portal-$kernel.csv (ios:$nioclusters, computes:$ncclusters, size: $size)"
+				make KERNEL=portal-$kernel ARGS="\"$nioclusters $ncclusters $size\"" run \
+				| tee                                                                    \
+					>(cat >> $LOG_FOLDER/portal-$kernel.log)                             \
+					>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-$kernel.raw)
 			done
 		done
 	done
 done
 
+#  | grep -E "mailbox;" 
+#  | grep -E "mailbox;" 
 
 # Mailbox benchmarks
 ## Runs Ping pong
-make KERNEL=mailbox-pingpong ARGS="\"1 1 120\"" run >> $output
+# echo "Saving $output/mailbox-pingpong.csv"
+# make KERNEL=mailbox-pingpong ARGS="\"1 1 120\"" run >> $output/mailbox-pingpong.csv
 
-for bench in broadcast # allgather need check {sather or gather missing}
-do
-	for niocluster in 1 2
-	do
-		for nccluster in {1..16}
-		do
-			make KERNEL=mailbox-$bench ARGS="\"$niocluster $nccluster 120\"" run | grep -E "portal;" >> $output
-		done
-	done
-done
+# for kernel in broadcast # allgather need check {sather or gather missing}
+# do
+# 	for nioclusters in 1 2
+# 	do
+# 		for ncclusters in {1..16}
+# 		do
+# 			echo "Saving $output/mailbox-$kernel.csv (ios:$nioclusters, computes:$ncclusters, size: $size)"
+# 			make KERNEL=mailbox-$kernel ARGS="\"$nioclusters $ncclusters 120\"" run >> $output/mailbox-$kernel.csv
+# 		done
+# 	done
+# done
