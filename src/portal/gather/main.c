@@ -42,17 +42,14 @@ void do_master(int nodes[], int nslaves, int message_size)
 
 	local = nodes[0];
 
-	kmemset(message, 0, (nslaves * message_size));
-
-	KASSERT((portal_in = kportal_create(local)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		kprintf("Iteration %d/%d", i, NITERATIONS);
+		KASSERT((portal_in = kportal_create(local)) >= 0);
 
 		barrier();
 
-		for (unsigned i = 0; i < NITERATIONS; ++i)
-		{
-			kprintf("Iteration %d/%d", i, NITERATIONS);
-
-			kmemset(message, 0, message_size);
+			kmemset(message, 0, (nslaves * message_size));
 
 			/* Reads NSLAVES messages. */
 			for (int j = 1; j <= nslaves; ++j)
@@ -76,14 +73,14 @@ void do_master(int nodes[], int nslaves, int message_size)
 				for (int k = 0; k < message_size; ++k)
 					KASSERT(curr_message[k] == value);
 			}
-		}
 
-		barrier();
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
 
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+		KASSERT(kportal_unlink(portal_in) == 0);
 
-	KASSERT(kportal_unlink(portal_in) == 0);
+		print_results("portal", "gather", nslaves, &results);
+	}
 }
 
 void do_slave(int nodes[], int message_size)
@@ -97,16 +94,16 @@ void do_slave(int nodes[], int message_size)
 
 	kmemset(message, (char) local, message_size);
 
-	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		KASSERT((portal_out = kportal_open(local, remote)) >= 0);
 
-		barrier();
+			barrier();
 
-		for (unsigned i = 0; i < NITERATIONS; i++)
 			KASSERT(kportal_write(portal_out, message, message_size) == message_size);
-		
-		barrier();
 
-	KASSERT(kportal_close(portal_out) == 0);
+		KASSERT(kportal_close(portal_out) == 0);
+	}
 }
 
 /*============================================================================*
@@ -150,24 +147,10 @@ int main(int argc, const char *argv[])
 		else
 			do_slave(nodes, _args.message_size);
 
+	barrier();
+
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[portal][gather] Successfuly completed.");
-
-		barrier();
-
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			print_results(
-				"portal",
-				"gather",
-				((_args.nioclusters - 1) + _args.ncclusters),
-				NITERATIONS,
-				&results
-			);
-
-		barrier();
-
-	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		kprintf("[portal][gather] Exit.");
 
 	barrier_cleanup();
 

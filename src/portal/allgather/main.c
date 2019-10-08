@@ -43,18 +43,18 @@ void do_work(int nodes[], int nnodes, int index, int message_size)
 
 	local = nodes[index];
 
-	KASSERT((portal_in = kportal_create(local)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+			kprintf("Iteration %d/%d", i, NITERATIONS);
 
-		for (unsigned i = 0; i < NITERATIONS; ++i)
-		{
-			if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-				kprintf("Iteration %d/%d", i, NITERATIONS);
+		/* Cleans the buffer. */
+		kmemset(message, (-1), nnodes * message_size);
 
-			/* Cleans the buffer. */
-			kmemset(message, (-1), nnodes * message_size);
+		/* Prepares the transfer data. */
+		kmemset(&message[index * message_size], (char) local, message_size);
 
-			/* Prepares the transfer data. */
-			kmemset(&message[index * message_size], (char) local, message_size);
+		KASSERT((portal_in = kportal_create(local)) >= 0);
 
 			for (int j = 1; j < nnodes; ++j)
 			{
@@ -63,26 +63,26 @@ void do_work(int nodes[], int nnodes, int index, int message_size)
 
 				KASSERT((portal_out = kportal_open(local, nodes[write_to])) >= 0);
 
-					barrier();
+				barrier();
 
-					KASSERT(kportal_allow(portal_in, nodes[read_from]) == 0);
+				KASSERT(kportal_allow(portal_in, nodes[read_from]) == 0);
+				KASSERT(
+					kportal_aread(
+						portal_in,
+						&message[read_from * message_size],
+						message_size
+					) == message_size
+				);
+
 					KASSERT(
-						kportal_aread(
-							portal_in,
-							&message[read_from * message_size],
+						kportal_write(
+							portal_out,
+							&message[index * message_size],
 							message_size
 						) == message_size
 					);
 
-						KASSERT(
-							kportal_write(
-								portal_out,
-								&message[index * message_size],
-								message_size
-							) == message_size
-						);
-
-					KASSERT(kportal_wait(portal_in) == 0);
+				KASSERT(kportal_wait(portal_in) == 0);
 
 				KASSERT(kportal_close(portal_out) == 0);
 			}
@@ -95,12 +95,27 @@ void do_work(int nodes[], int nnodes, int index, int message_size)
 				for (int k = 0; k < message_size; ++k)
 					KASSERT(curr_message[k] == value);
 			}
+
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+
+		KASSERT(kportal_unlink(portal_in) == 0);
+
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		{
+			uint64_t l0 = results.latency;
+			uint64_t v0 = results.volume;
+
+			receive_results((nnodes - 1), &results);
+
+			results.latency = results.latency < l0 ? l0 : results.latency;
+			results.volume  = results.volume < v0  ? v0 : results.volume;
+
+			print_results("portal", "allgather", nnodes, &results);
 		}
-
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
-
-	KASSERT(kportal_unlink(portal_in) == 0);
+		else
+			send_results(&results);
+	}
 }
 
 /*============================================================================*
@@ -160,26 +175,6 @@ int main(int argc, const char *argv[])
 
 		barrier();
 
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		{
-			uint64_t l0 = results.latency;
-			uint64_t v0 = results.volume;
-
-			receive_results(((_args.nioclusters - 1) + _args.ncclusters), &results);
-
-			results.latency = results.latency < l0 ? l0 : results.latency;
-			results.volume  = results.volume < v0  ? v0 : results.volume;
-
-			print_results(
-				"portal",
-				"allgather",
-				(_args.nioclusters + _args.ncclusters),
-				NITERATIONS,
-				&results
-			);
-		}
-		else
-			send_results(&results);
 
 		barrier();
 

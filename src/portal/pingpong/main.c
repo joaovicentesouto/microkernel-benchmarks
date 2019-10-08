@@ -30,6 +30,19 @@
 static struct final_results results;
 static char message[MESSAGE_MSG_MAX];
 
+void do_master_results(void)
+{
+	uint64_t l0 = results.latency;
+	uint64_t v0 = results.volume;
+	
+	receive_results(1, &results);
+
+	results.latency = results.latency < l0 ? l0 : results.latency;
+	results.volume  = results.volume < v0  ? v0 : results.volume;
+
+	print_results("portal", "pingpong", 2, &results);
+}
+
 void do_master(int nodes[], int message_size)
 {
 	int local;
@@ -42,16 +55,16 @@ void do_master(int nodes[], int message_size)
 
 	kmemset(message, 0, message_size);
 
-	KASSERT((portal_in = kportal_create(local)) >= 0);
-	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		kprintf("Iteration %d/%d", i, NITERATIONS);
 
-		barrier();
+		kmemset(message, 0, message_size);
 
-		for (unsigned i = 0; i < NITERATIONS; i++)
-		{
-			kprintf("Iteration %d/%d", i, NITERATIONS);
+		KASSERT((portal_in = kportal_create(local)) >= 0);
+		KASSERT((portal_out = kportal_open(local, remote)) >= 0);
 
-			kmemset(message, 0, message_size);
+			barrier();
 
 			KASSERT(kportal_allow(portal_in, remote) == 0);
 			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
@@ -63,10 +76,20 @@ void do_master(int nodes[], int message_size)
 			}
 
 			KASSERT(kportal_write(portal_out, message, message_size) >= message_size);
-		}
 
-	KASSERT(kportal_close(portal_out) == 0);
-	KASSERT(kportal_unlink(portal_in) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+
+		KASSERT(kportal_close(portal_out) == 0);
+		KASSERT(kportal_unlink(portal_in) == 0);
+
+		do_master_results();
+	}
+}
+
+void do_slave_results(void)
+{
+	send_results(&results);
 }
 
 void do_slave(int nodes[], int message_size)
@@ -81,15 +104,14 @@ void do_slave(int nodes[], int message_size)
 
 	kmemset(message, 0, message_size);
 
-	KASSERT((portal_in = kportal_create(local)) >= 0);
-	KASSERT((portal_out = kportal_open(local, remote)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		KASSERT((portal_in = kportal_create(local)) >= 0);
+		KASSERT((portal_out = kportal_open(local, remote)) >= 0);
 
-		barrier();
+			barrier();
 
-		for (unsigned i = 0; i < NITERATIONS; i++)
-		{
-			for (int j = 0; j < message_size; j++)
-				message[j] = 2;
+			kmemset(message, 2, message_size);
 
 			KASSERT(kportal_write(portal_out, message, message_size) >= message_size);
 
@@ -100,14 +122,15 @@ void do_slave(int nodes[], int message_size)
 
 			for (int j = 0; j < message_size; j++)
 				KASSERT(message[j] == 1);
-		}
 
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
 
-	KASSERT(kportal_close(portal_out) == 0);
-	KASSERT(kportal_unlink(portal_in) == 0);
+		KASSERT(kportal_close(portal_out) == 0);
+		KASSERT(kportal_unlink(portal_in) == 0);
 
+		do_slave_results();
+	}
 }
 
 /*============================================================================*
@@ -151,30 +174,10 @@ int main(int argc, const char *argv[])
 		else
 			do_slave(nodes, _args.message_size);
 
+	barrier();
+
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[portal][pingpong] Successfuly completed.");
-
-		barrier();
-
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		{
-			uint64_t l0 = results.latency;
-			uint64_t v0 = results.volume;
-			
-			receive_results(1, &results);
-
-			results.latency = results.latency < l0 ? l0 : results.latency;
-			results.volume  = results.volume < v0  ? v0 : results.volume;
-
-			print_results("portal", "pingpong", 2, NITERATIONS, &results);
-		}
-		else
-			send_results(&results);
-
-		barrier();
-
-	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		kprintf("[portal][pingpong] Exit.");
 
 	barrier_cleanup();
 

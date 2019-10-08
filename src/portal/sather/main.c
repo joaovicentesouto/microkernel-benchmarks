@@ -43,11 +43,11 @@ void do_master(int nodes[], int nslaves, int message_size)
 	for (int i = 0; i < nslaves; ++i)
 		kmemset(&message[i * message_size], (char) nodes[i + 1], message_size);
 
-	barrier();
-
-	for (unsigned i = 0; i < NITERATIONS; ++i)
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
 	{
 		kprintf("Iteration %d/%d", i, NITERATIONS);
+
+		barrier();
 
 		for (int j = 0; j < nslaves; j += 4)
 		{
@@ -81,6 +81,8 @@ void do_master(int nodes[], int nslaves, int message_size)
 			for (int k = 0; k < (index - 1); ++k)
 				KASSERT(kportal_close(portals_out[k]) == 0);
 		}
+
+		barrier(); //! Waits results exchange.
 	}
 }
 
@@ -97,15 +99,15 @@ void do_slave(int nodes[], int message_size)
 	sync_nodelist[0] = nodes[0];
 	sync_nodelist[1] = local;
 
-	kmemset(message, 0, message_size);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		kmemset(message, 0, message_size);
 
-	KASSERT((syncid = ksync_create(sync_nodelist, 2, SYNC_ONE_TO_ALL)) >= 0);
-	KASSERT((portal_in = kportal_create(local)) >= 0);
+		KASSERT((syncid = ksync_create(sync_nodelist, 2, SYNC_ONE_TO_ALL)) >= 0);
+		KASSERT((portal_in = kportal_create(local)) >= 0);
 
-		barrier();
+			barrier();
 
-		for (unsigned i = 0; i < NITERATIONS; ++i)
-		{
 			kmemset(message, 0, message_size);
 
 			KASSERT(ksync_wait(syncid) == 0);
@@ -114,18 +116,16 @@ void do_slave(int nodes[], int message_size)
 			KASSERT(kportal_read(portal_in, message, message_size) == message_size);
 
 			for (int j = 0; j < message_size; ++j)
-			{
-				char value = (char) local;
+				KASSERT(message[j] == (char) local);
 
-				KASSERT(message[j] == value);
-			}
-		}
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
 
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_LATENCY, &results.latency) == 0);
-		KASSERT(kportal_ioctl(portal_in, PORTAL_IOCTL_GET_VOLUME, &results.volume) == 0);
+		KASSERT(kportal_unlink(portal_in) == 0);
+		KASSERT(ksync_unlink(syncid) == 0);
 
-	KASSERT(kportal_unlink(portal_in) == 0);
-	KASSERT(ksync_unlink(syncid) == 0);
+		send_results(&results); //! Implicit barrier
+	}
 }
 
 /*============================================================================*
@@ -163,7 +163,15 @@ int main(int argc, const char *argv[])
 		kprintf(HLINE);
 
 		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			barrier();
+		{
+			for (unsigned i = 1; i <= NITERATIONS; ++i)
+			{
+				barrier();
+
+				receive_results(_args.ncclusters, &results);
+				print_results("portal", "sather", _args.ncclusters, &results);
+			}
+		}
 		else
 		{
 			if (knode_get_num() == nodes[0])
@@ -177,22 +185,6 @@ int main(int argc, const char *argv[])
 
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[portal][sather] Successfuly completed.");
-
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		{
-			receive_results(_args.ncclusters, &results);
-
-			print_results("portal", "sather" ,_args.ncclusters, NITERATIONS, &results);
-		}
-		else if (knode_get_num() == nodes[0])
-			barrier();
-		else
-			send_results(&results);
-
-		barrier();
-
-	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		kprintf("[portal][sather] Exit.");
 
 	barrier_cleanup();
 

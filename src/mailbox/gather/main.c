@@ -48,15 +48,15 @@ void do_master(int nodes[], int nslaves)
 	local = nodes[0];
 	expected = build_footprint(nodes, (nslaves + 1), local);
 
-	KASSERT((inbox = kmailbox_create(local)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		kprintf("Iteration %d/%d", i, NITERATIONS);
 
-		barrier();
-
-		for (unsigned i = 0; i < NITERATIONS; ++i)
-		{
-			kprintf("Iteration %d/%d", i, NITERATIONS);
+		KASSERT((inbox = kmailbox_create(local)) >= 0);
 
 			received = 0;
+
+			barrier();
 
 			/* Reads NSLAVES messages. */
 			for (int j = 0; j < nslaves; ++j)
@@ -65,18 +65,20 @@ void do_master(int nodes[], int nslaves)
 
 				KASSERT(kmailbox_read(inbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
 
-				received |= (1ULL << message[0]);
+				received |= (1 << message[0]);
 			}
 
 			KASSERT(expected == received);
-		}
+
+			KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_VOLUME, &results.volume) == 0);
+
+		KASSERT(kmailbox_unlink(inbox) == 0);
+
+		print_results("mailbox", "gather", nslaves, &results);
 
 		barrier();
-
-		KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_LATENCY, &results.latency) == 0);
-		KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_VOLUME, &results.volume) == 0);
-
-	KASSERT(kmailbox_unlink(inbox) == 0);
+	}
 }
 
 void do_slave(int nodes[])
@@ -90,16 +92,18 @@ void do_slave(int nodes[])
 
 	kmemset(message, (char) local, MAILBOX_MSG_SIZE);
 
-	KASSERT((outbox = kmailbox_open(remote)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		KASSERT((outbox = kmailbox_open(remote)) >= 0);
 
-		barrier();
+			barrier();
 
-		for (unsigned i = 0; i < NITERATIONS; i++)
 			KASSERT(kmailbox_write(outbox, message, MAILBOX_MSG_SIZE) == MAILBOX_MSG_SIZE);
-		
-		barrier();
 
-	KASSERT(kmailbox_close(outbox) == 0);
+		KASSERT(kmailbox_close(outbox) == 0);
+
+		barrier();
+	}
 }
 
 /*============================================================================*
@@ -143,24 +147,10 @@ int main(int argc, const char *argv[])
 		else
 			do_slave(nodes);
 
+		barrier();
+
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[mailbox][gather] Successfuly completed.");
-
-		barrier();
-
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-			print_results(
-				"mailbox",
-				"gather",
-				((_args.nioclusters - 1) + _args.ncclusters),
-				NITERATIONS,
-				&results
-			);
-
-		barrier();
-
-	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		kprintf("[mailbox][gather] Exit.");
 
 	barrier_cleanup();
 

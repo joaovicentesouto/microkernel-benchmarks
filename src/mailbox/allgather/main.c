@@ -50,12 +50,12 @@ void do_work(int nodes[], int nnodes, int index)
 	local = nodes[index];
 	expected = build_footprint(nodes, nnodes, local);
 
-	KASSERT((inbox = kmailbox_create(local)) >= 0);
+	for (unsigned i = 1; i <= NITERATIONS; ++i)
+	{
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+			kprintf("Iteration %d/%d", i, NITERATIONS);
 
-		for (unsigned i = 0; i < NITERATIONS; ++i)
-		{
-			if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-				kprintf("Iteration %d/%d", i, NITERATIONS);
+		KASSERT((inbox = kmailbox_create(local)) >= 0);
 
 			kmemset(message, (char) (local), MAILBOX_MSG_SIZE);
 
@@ -72,7 +72,7 @@ void do_work(int nodes[], int nnodes, int index)
 			}
 
 			/* Receives n-1 messages. */
-			received = 0ULL;
+			received = 0;
 			for (int j = 0; j < (nnodes - 1); ++j)
 			{
 				kmemset(message, (char) (-1), MAILBOX_MSG_SIZE);
@@ -80,18 +80,32 @@ void do_work(int nodes[], int nnodes, int index)
 
 				kprintf("Ignore this.");
 				
-				received |= (1ULL << message[0]);
+				received |= (1 << message[0]);
 			}
 
 			KASSERT(expected == received);
+			kprintf(" === exit.");
+
+			KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_LATENCY, &results.latency) == 0);
+			KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_VOLUME, &results.volume) == 0);
+
+		KASSERT(kmailbox_unlink(inbox) == 0);
+
+		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
+		{
+			uint64_t l0 = results.latency;
+			uint64_t v0 = results.volume;
+
+			receive_results((nnodes - 1), &results);
+
+			results.latency = results.latency < l0 ? l0 : results.latency;
+			results.volume  = results.volume < v0  ? v0 : results.volume;
+
+			print_results("mailbox", "allgather", nnodes, &results);
 		}
-
-		kprintf(" === exit.");
-
-		KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_LATENCY, &results.latency) == 0);
-		KASSERT(kmailbox_ioctl(inbox, MAILBOX_IOCTL_GET_VOLUME, &results.volume) == 0);
-
-	KASSERT(kmailbox_unlink(inbox) == 0);
+		else
+			send_results(&results);
+	}
 }
 
 /*============================================================================*
@@ -146,36 +160,10 @@ int main(int argc, const char *argv[])
 		/* Runs the kernel. */
 		do_work(nodes, (_args.nioclusters + _args.ncclusters), index);
 
+		barrier();
+
 	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
 		kprintf("[mailbox][allgather] Successfuly completed.");
-
-		barrier();
-
-		if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		{
-			uint64_t l0 = results.latency;
-			uint64_t v0 = results.volume;
-
-			receive_results(((_args.nioclusters - 1) + _args.ncclusters), &results);
-
-			results.latency = results.latency < l0 ? l0 : results.latency;
-			results.volume  = results.volume < v0  ? v0 : results.volume;
-
-			print_results(
-				"mailbox",
-				"allgather",
-				(_args.nioclusters + _args.ncclusters),
-				NITERATIONS,
-				&results
-			);
-		}
-		else
-			send_results(&results);
-
-		barrier();
-
-	if (cluster_get_num() == PROCESSOR_CLUSTERNUM_MASTER)
-		kprintf("[mailbox][allgather] Exit.");
 
 	barrier_cleanup();
 
