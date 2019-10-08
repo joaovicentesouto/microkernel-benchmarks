@@ -49,9 +49,27 @@ do
 		>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-pingpong.raw)
 done
 
-for kernel in allgather broadcast gather sather
+for kernel in sather
 do
-	for nioclusters in 1 2
+	for nioclusters in 1
+	do
+		for ncclusters in {9..16}
+		do
+			for size in ${sizes}
+			do
+				echo "Saving $output/portal-$kernel.csv (ios:$nioclusters, computes:$ncclusters, size: $size)"
+				make KERNEL=portal-$kernel ARGS="\"$nioclusters $ncclusters $size\"" run \
+				| tee                                                                    \
+					>(cat >> $LOG_FOLDER/portal-$kernel.log)                             \
+					>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-$kernel.raw)
+			done
+		done
+	done
+done
+
+for kernel in sather
+do
+	for nioclusters in 2
 	do
 		for ncclusters in {1..16}
 		do
@@ -71,18 +89,24 @@ done
 #  | grep -E "mailbox;" 
 
 # Mailbox benchmarks
-## Runs Ping pong
-# echo "Saving $output/mailbox-pingpong.csv"
-# make KERNEL=mailbox-pingpong ARGS="\"1 1 120\"" run >> $output/mailbox-pingpong.csv
+# Runs Ping pong
+echo "Saving $output/mailbox-pingpong.csv"
+make KERNEL=mailbox-pingpong ARGS="\"1 1 120\"" run >> $output/mailbox-pingpong.csv
+| tee                                                \
+	>(cat >> $LOG_FOLDER/mailbox-pingpong.log)        \
+	>(grep -E "mailbox;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/mailbox-pingpong.raw)
 
-# for kernel in broadcast # allgather need check {sather or gather missing}
-# do
-# 	for nioclusters in 1 2
-# 	do
-# 		for ncclusters in {1..16}
-# 		do
-# 			echo "Saving $output/mailbox-$kernel.csv (ios:$nioclusters, computes:$ncclusters, size: $size)"
-# 			make KERNEL=mailbox-$kernel ARGS="\"$nioclusters $ncclusters 120\"" run >> $output/mailbox-$kernel.csv
-# 		done
-# 	done
-# done
+for kernel in broadcast # allgather need check {sather or gather missing}
+do
+	for nioclusters in 1 2
+	do
+		for ncclusters in {1..16}
+		do
+			echo "Saving $output/mailbox-$kernel.csv (ios:$nioclusters, computes:$ncclusters)"
+			make KERNEL=mailbox-$kernel ARGS="\"$nioclusters $ncclusters 120\"" run \
+			| tee                                                                   \
+				>(cat >> $LOG_FOLDER/mailbox-$kernel.log)                          \
+				>(grep -E "mailbox;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/mailbox-$kernel.raw)
+		done
+	done
+done
