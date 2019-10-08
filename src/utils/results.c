@@ -80,17 +80,15 @@ void print_results(
 	char * abstraction,
 	char * kernel,
 	int nclusters,
-	int iterations,
 	struct final_results * results
 )
 {
-	kprintf("header;%s;clusters;iterations;latency;volume", kernel);
+	kprintf("header;%s;clusters;latency;volume", kernel);
 	kprintf(
-		"%s;%s;%d;%d;%ld;%ld",
+		"%s;%s;%d;%ld;%ld",
 		abstraction,
 		kernel,
 		nclusters,
-		iterations,
 		results->latency,
 		results->volume
 	);
