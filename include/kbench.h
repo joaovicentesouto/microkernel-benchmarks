@@ -112,7 +112,6 @@
 		char * abstraction,
 		char * kernel,
 		int nclusters,
-		int iterations,
 		struct final_results * results
 	);
 
