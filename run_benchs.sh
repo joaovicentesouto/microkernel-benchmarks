@@ -35,78 +35,31 @@ export RELEASE=true
 KB=1024
 sizes="$((4 * KB)) $((8 * KB)) $((16 * KB)) $((32 * KB)) $((64 * KB))"
 
-# # Compile
+# Compile
 make contrib && make all
 
 # Portal benchmarks
-## Runs Ping pong
-for size in ${sizes}
+for kernel in broadcast allgather gather pingpong
 do
-	echo "Saving $RAW_FOLDER/portal-pingpong.csv (size: $size)"
-	make KERNEL=portal-pingpong ARGS="\"1 1 $size\"" run \
-	| tee                                                \
-		>(cat >> $LOG_FOLDER/portal-pingpong.log)        \
-		>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-pingpong.raw)
-done
-
-for kernel in sather
-do
-	for nioclusters in 1
+	for size in ${sizes}
 	do
-		for ncclusters in {9..16}
-		do
-			for size in ${sizes}
-			do
-				echo "Saving $output/portal-$kernel.csv (ios:$nioclusters, computes:$ncclusters, size: $size)"
-				make KERNEL=portal-$kernel ARGS="\"$nioclusters $ncclusters $size\"" run \
-				| tee                                                                    \
-					>(cat >> $LOG_FOLDER/portal-$kernel.log)                             \
-					>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-$kernel.raw)
-			done
-		done
+		echo "Saving $output/portal-$kernel.csv (ios:1, computes:16, size: $size)"
+		make KERNEL=portal-$kernel ARGS="\"1 16 $size\"" run \
+		| tee                                                                    \
+			>(cat >> $LOG_FOLDER/portal-$kernel.log)                             \
+			>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-$kernel.raw)
 	done
 done
-
-for kernel in sather
-do
-	for nioclusters in 2
-	do
-		for ncclusters in {1..16}
-		do
-			for size in ${sizes}
-			do
-				echo "Saving $output/portal-$kernel.csv (ios:$nioclusters, computes:$ncclusters, size: $size)"
-				make KERNEL=portal-$kernel ARGS="\"$nioclusters $ncclusters $size\"" run \
-				| tee                                                                    \
-					>(cat >> $LOG_FOLDER/portal-$kernel.log)                             \
-					>(grep -E "portal;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/portal-$kernel.raw)
-			done
-		done
-	done
-done
-
-#  | grep -E "mailbox;" 
-#  | grep -E "mailbox;" 
 
 # Mailbox benchmarks
-# Runs Ping pong
-echo "Saving $output/mailbox-pingpong.csv"
-make KERNEL=mailbox-pingpong ARGS="\"1 1 120\"" run >> $output/mailbox-pingpong.csv
-| tee                                                \
-	>(cat >> $LOG_FOLDER/mailbox-pingpong.log)        \
-	>(grep -E "mailbox;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/mailbox-pingpong.raw)
-
-for kernel in broadcast # allgather need check {sather or gather missing}
+for kernel in broadcast allgather gather pingpong
 do
-	for nioclusters in 1 2
+	for ncclusters in {1..16}
 	do
-		for ncclusters in {1..16}
-		do
-			echo "Saving $output/mailbox-$kernel.csv (ios:$nioclusters, computes:$ncclusters)"
-			make KERNEL=mailbox-$kernel ARGS="\"$nioclusters $ncclusters 120\"" run \
-			| tee                                                                   \
-				>(cat >> $LOG_FOLDER/mailbox-$kernel.log)                          \
-				>(grep -E "mailbox;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/mailbox-$kernel.raw)
-		done
+		echo "Saving $output/mailbox-$kernel.csv (ios:1, computes:$ncclusters)"
+		make KERNEL=mailbox-$kernel ARGS="\"1 $ncclusters 120\"" run \
+		| tee                                                        \
+			>(cat >> $LOG_FOLDER/mailbox-$kernel.log)                \
+			>(grep -E "mailbox;" | sed -n -e 's/IODDR0@0.0: RM 1: //p' >> $RAW_FOLDER/mailbox-$kernel.raw)
 	done
 done
